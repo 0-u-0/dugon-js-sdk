@@ -4,13 +4,12 @@ import { remoteSdpGen, getDtls, getProduceData } from './utils';
 import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
-export default class Publisher {
-  constructor(transportParamaters) {
-    this.id = transportParamaters.id;
-    this.pc = null;
-    //TODO: De-structuring
-    this.transportParamaters = transportParamaters;
-    
+import Transport from './transport';
+
+export default class Publisher extends Transport {
+  constructor() {
+    super();
+
     this.senders = [];
 
     this.asyncQueue = new AsyncQueue();
@@ -57,7 +56,7 @@ export default class Publisher {
       }
     }
 
-    let remoteSdp = remoteSdpGen(this.senders, this.transportParamaters);
+    let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
 
     let remoteSdpObj = new RTCSessionDescription({
       type: 'answer',
@@ -90,6 +89,9 @@ export default class Publisher {
     for (let sender of this.senders) {
       const producingData = getProduceData(sender);
       if (producingData) {
+        producingData.metadata = {
+          test: 'test'
+        };
         this.onproduce(producingData);
       }
     }
@@ -126,7 +128,7 @@ export default class Publisher {
       this.senders.push(sender);
 
       await this.pc.setLocalDescription(localSdp);
-      let remoteSdp = remoteSdpGen(this.senders, this.transportParamaters);
+      let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
 
       let remoteSdpObj = new RTCSessionDescription({
         type: 'answer',
@@ -162,7 +164,7 @@ export default class Publisher {
       let localSdpObj = sdpTransform.parse(localSdp.sdp);
       await this.pc.setLocalDescription(localSdp);
 
-      let remoteSdp = remoteSdpGen(this.senders, this.transportParamaters);
+      let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);;
 
       let remoteSdpObj = new RTCSessionDescription({
         type: 'answer',

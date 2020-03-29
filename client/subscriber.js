@@ -11,11 +11,9 @@ class Receiver {
 
 export default class Subscriber {
   constructor(transportParamaters) {
-    this.id = transportParamaters.id;
+    this.id = null;
     this.pc = null;
-    //TODO: De-structuring
-    this.transportParamaters = transportParamaters;
-
+ 
     this.receivers = [];
 
     this.asyncQueue = new AsyncQueue();

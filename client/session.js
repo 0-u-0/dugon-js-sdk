@@ -12,8 +12,8 @@ export default class Session {
 
     this.socket = null;
 
-    this.publisher = null;
-    this.subscriber = null;
+    this.publisher = new Publisher();
+    this.subscriber = new Subscriber();
 
     //event
     this.onin = null;
@@ -40,14 +40,20 @@ export default class Session {
   //create transport and publish tracks
   async publish(tracks) {
     const { transportParameters } = await this.socket.request({
-      event: 'createPublishTransport'
+      event: 'transport',
+      data: {
+        role: 'pub'
+      }
     });
-    this.publisher = new Publisher(transportParameters);
+
+    const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
+    this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
     this.publisher.ondtls = async dtlsParameters => {
       await this.socket.request({
-        event: 'publishDtls',
+        event: 'dtls',
         data: {
-          id: this.publisher.id,
+          transportId: this.publisher.id,
+          role: 'pub',
           dtlsParameters
         }
       });
@@ -57,7 +63,7 @@ export default class Session {
       let result = await this.socket.request({
         event: 'produce',
         data: {
-          id: this.publisher.id,
+          transportId: this.publisher.id,
           ...producingParameters
         }
       })
@@ -81,7 +87,7 @@ export default class Session {
         break;
       };
       case 'produce': {
-        
+        break;
       };
       default: {
         console.log('unknown event ', event);

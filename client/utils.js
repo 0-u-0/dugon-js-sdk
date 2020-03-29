@@ -77,7 +77,7 @@ export function initCanvas() {
   // draw(ctx);
 }
 
-export function remoteSdpGen(senders, remoteParameters) {
+export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
   const sdpTemplate = {
     "version": 0,
     "origin": {
@@ -331,8 +331,8 @@ export function remoteSdpGen(senders, remoteParameters) {
   let remoteSdpObj = Object.assign(sdpTemplate);
 
   remoteSdpObj.fingerprint = {
-    "type": remoteParameters.dtlsParameters.fingerprint.algorithm,
-    "hash": remoteParameters.dtlsParameters.fingerprint.value
+    "type": remoteDTLSParameters.fingerprint.algorithm,
+    "hash": remoteDTLSParameters.fingerprint.value
   }
 
 
@@ -363,11 +363,11 @@ export function remoteSdpGen(senders, remoteParameters) {
       }
 
 
-      mediaObj.iceUfrag = remoteParameters.iceParameters.usernameFragment;
-      mediaObj.icePwd = remoteParameters.iceParameters.password;
+      mediaObj.iceUfrag = remoteICEParameters.usernameFragment;
+      mediaObj.icePwd = remoteICEParameters.password;
 
-      for (let i in remoteParameters.iceCandidates) {
-        let candidate = remoteParameters.iceCandidates[i];
+      for (let i in remoteICECandidates) {
+        let candidate = remoteICECandidates[i];
         mediaObj.candidates.push(Object.assign(candidate, { component: 1, transport: candidate.protocol }))
       }
 
@@ -482,7 +482,6 @@ export function getProduceData(sender) {
     producingData = {
       "kind": "audio",
       "rtpParameters": sendingRtpParameters,
-      "appData": {}
     }
   } else if (sender.kind === 'video') {
     const sendingRtpParameters = {
@@ -621,7 +620,6 @@ export function getProduceData(sender) {
     producingData = {
       "kind": "video",
       "rtpParameters": sendingRtpParameters,
-      "appData": {}
     }
   }
   producingData.localId = sender.id;
