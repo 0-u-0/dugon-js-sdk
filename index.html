@@ -1,0 +1,51 @@
+<script src="bundle.js"></script>
+<script>
+
+  function randomInitId(length) {
+    let randomNum = 0;
+    while (randomNum < 0.1) {
+      randomNum = Math.random();
+    }
+    return parseInt(randomNum * Math.pow(10, length))
+  }
+
+  let session;
+  async function main() {
+    //track
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    [audioTrack] = stream.getAudioTracks();
+    [videoTrack] = stream.getVideoTracks();
+
+    audioTrack.stream = stream;
+    videoTrack.stream = stream;
+
+    console.log(audioTrack.id)
+    console.log(videoTrack.id)
+
+    //session
+    const sessionId = 'test';
+    const tokenId = randomInitId(8);
+    session = new Dugon.Session(sessionId, tokenId, {
+      url: `ws://127.0.0.1:8800`
+    });
+
+    session.onin = tokenId => {
+      console.log(tokenId, ' in');
+    };
+
+
+    session.onout = tokenId => {
+      console.log(tokenId, ' out');
+    };
+
+    await session.init();
+
+    session.publish([audioTrack,videoTrack]);
+    // await session.
+
+
+  }
+
+  main();
+
+</script>
