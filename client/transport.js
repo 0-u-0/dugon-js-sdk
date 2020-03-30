@@ -15,3 +15,7 @@ export default class Transport {
     this.remoteDTLSParameters = remoteDTLSParameters;
   }
 } 
+
+Transport.TRANSPORT_NEW = 0;
+Transport.TRANSPORT_CONNECTING = 1;
+Transport.TRANSPORT_CONNECTED = 2;

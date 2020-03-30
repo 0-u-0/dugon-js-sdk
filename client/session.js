@@ -1,6 +1,7 @@
 import Socket from './socket';
 import Publisher from './publisher';
 import Subscriber from './subscriber';
+import Transport from './transport';
 
 export default class Session {
   constructor(sessionId, tokenId, options = { url: '' }) {
@@ -72,6 +73,56 @@ export default class Session {
 
   }
 
+  async subscribe(receiver) {
+    console.log('subscribe');
+    if (this.subscriber.state === Transport.TRANSPORT_NEW) {
+      this.subscriber.ondtls = async dtlsParameters => {
+        await this.socket.request({
+          event: 'dtls',
+          data: {
+            transportId: this.subscriber.id,
+            role: 'sub',
+            dtlsParameters
+          }
+        });
+      };
+
+      this.subscriber.ontrack = track=>{
+        this.ontrack(track);
+      };
+
+      this.subscriber.state = Transport.TRANSPORT_CONNECTING;
+      const { transportParameters } = await this.socket.request({
+        event: 'transport',
+        data: {
+          role: 'sub'
+        }
+      });
+
+      const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
+      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
+
+      const consumerParameters = await this.socket.request({
+        event: 'consume',
+        data: {
+          tokenId: receiver.tokenId,
+          producerId: receiver.producerId,
+          transportId: this.subscriber.id
+        }
+      })
+
+      receiver.active = true;
+
+      const { consumerId, kind, rtpParameters, type, producerPaused, producerId } = consumerParameters;
+      receiver.consumerId = consumerId;
+      receiver.kind = kind;
+      receiver.rtpParameters = rtpParameters;
+
+      await this.subscriber.init();
+
+    }
+
+  }
 
   handleEvent(event, data) {
     console.log('event: ', event, data);
@@ -87,6 +138,9 @@ export default class Session {
         break;
       };
       case 'produce': {
+        let { producerId, tokenId, metadata } = data;
+        let receiver = this.subscriber.addReceiver(producerId, tokenId, metadata);
+        this.onreceiver(receiver, tokenId, producerId, metadata);
         break;
       };
       default: {

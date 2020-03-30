@@ -1,5 +1,8 @@
+<video id='player' autoplay controls></video>
 <script src="bundle.js"></script>
 <script>
+  const urlObject = new URL(document.location.href);
+  const t = urlObject.searchParams.get("type");
 
   function randomInitId(length) {
     let randomNum = 0;
@@ -11,37 +14,69 @@
 
   let session;
   async function main() {
-    //track
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    [audioTrack] = stream.getAudioTracks();
-    [videoTrack] = stream.getVideoTracks();
+    if (t == '1') {
+      //track
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      [audioTrack] = stream.getAudioTracks();
+      [videoTrack] = stream.getVideoTracks();
 
-    audioTrack.stream = stream;
-    videoTrack.stream = stream;
+      audioTrack.stream = stream;
+      videoTrack.stream = stream;
 
-    console.log(audioTrack.id)
-    console.log(videoTrack.id)
+      console.log(audioTrack.id)
+      console.log(videoTrack.id)
 
-    //session
-    const sessionId = 'test';
-    const tokenId = randomInitId(8);
-    session = new Dugon.Session(sessionId, tokenId, {
-      url: `ws://127.0.0.1:8800`
-    });
+      //session
+      const sessionId = 'test';
+      const tokenId = randomInitId(8);
+      session = new Dugon.Session(sessionId, tokenId, {
+        url: `ws://127.0.0.1:8800`
+      });
 
-    session.onin = tokenId => {
-      console.log(tokenId, ' in');
-    };
+      session.onin = tokenId => {
+        console.log(tokenId, ' in');
+      };
 
 
-    session.onout = tokenId => {
-      console.log(tokenId, ' out');
-    };
+      session.onout = tokenId => {
+        console.log(tokenId, ' out');
+      };
 
-    await session.init();
+      await session.init();
 
-    session.publish([audioTrack,videoTrack]);
-    // await session.
+      session.publish([audioTrack, videoTrack]);
+      // await session.
+    } else {
+      //session
+      const sessionId = 'test';
+      const tokenId = randomInitId(8);
+      session = new Dugon.Session(sessionId, tokenId, {
+        url: `ws://127.0.0.1:8800`
+      });
+
+      session.onin = tokenId => {
+        console.log(tokenId, ' in');
+      };
+
+
+      session.onout = tokenId => {
+        console.log(tokenId, ' out');
+      };
+
+      session.ontrack = track => {
+        const stream = new MediaStream();
+        stream.addTrack(track);
+
+        document.querySelector('#player').srcObject = stream;
+      }
+
+      session.onreceiver = (receiver, tokenId, producerId, metadata) => {
+        session.subscribe(receiver);
+      };
+
+      await session.init();
+    }
+
 
 
   }
