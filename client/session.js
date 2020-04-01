@@ -39,23 +39,6 @@ export default class Session {
     });
   }
 
-  async fetchTransportParameters(role) {
-    const { transportParameters } = await this.socket.request({
-      event: 'transport',
-      data: {
-        role
-      }
-    });
-
-    const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
-
-    if (role === 'pub') {
-      this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
-    } else {
-      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
-    }
-  }
-
   //create transport and publish tracks
   async publish(track) {
     if (this.publisher.state === 0) {
@@ -120,6 +103,8 @@ export default class Session {
   async subscribe(receiver) {
     console.log('subscribe');
     if (this.subscriber.state === Transport.TRANSPORT_NEW) {
+      this.subscriber.state = Transport.TRANSPORT_CONNECTING;
+
       this.subscriber.ondtls = async dtlsParameters => {
         await this.socket.request({
           event: 'dtls',
@@ -135,16 +120,7 @@ export default class Session {
         this.ontrack(track);
       };
 
-      this.subscriber.state = Transport.TRANSPORT_CONNECTING;
-      const { transportParameters } = await this.socket.request({
-        event: 'transport',
-        data: {
-          role: 'sub'
-        }
-      });
-
-      const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
-      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
+      await this.fetchTransportParameters('sub');
 
       const consumerParameters = await this.socket.request({
         event: 'consume',
@@ -166,6 +142,23 @@ export default class Session {
 
     }
 
+  }
+
+  async fetchTransportParameters(role) {
+    const { transportParameters } = await this.socket.request({
+      event: 'transport',
+      data: {
+        role
+      }
+    });
+
+    const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
+
+    if (role === 'pub') {
+      this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
+    } else {
+      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
+    }
   }
 
   handleEvent(event, data) {
@@ -192,9 +185,6 @@ export default class Session {
       }
     }
   }
-
-
-
 
 }
 
