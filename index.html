@@ -13,6 +13,8 @@
   }
 
   let session;
+  let audioTrack;
+  let videoTrack;
   async function main() {
     if (t == '1') {
       //track
@@ -37,14 +39,21 @@
         console.log(tokenId, ' in');
       };
 
-
       session.onout = tokenId => {
         console.log(tokenId, ' out');
       };
 
+      session.onsender = sender => {
+        // session.unpublish(sender);
+        // if (sender.id == videoTrack.id) {
+        //   session.unpublish(sender);
+        // }
+      };
+
       await session.init();
 
-      session.publish([audioTrack, videoTrack]);
+      await session.publish(audioTrack);
+      await session.publish(videoTrack);
       // await session.
     } else {
       //session

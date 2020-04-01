@@ -19,6 +19,7 @@ export default class Session {
     //event
     this.onin = null;
     this.onout = null;
+    this.onsender = null;
   }
 
   async init() {
@@ -38,39 +39,82 @@ export default class Session {
     });
   }
 
-  //create transport and publish tracks
-  async publish(tracks) {
+  async fetchTransportParameters(role) {
     const { transportParameters } = await this.socket.request({
       event: 'transport',
       data: {
-        role: 'pub'
+        role
       }
     });
 
     const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
-    this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
-    this.publisher.ondtls = async dtlsParameters => {
-      await this.socket.request({
-        event: 'dtls',
-        data: {
-          transportId: this.publisher.id,
-          role: 'pub',
-          dtlsParameters
-        }
-      });
-    };
 
-    this.publisher.onproduce = async producingParameters => {
-      let result = await this.socket.request({
-        event: 'produce',
-        data: {
-          transportId: this.publisher.id,
-          ...producingParameters
-        }
-      })
+    if (role === 'pub') {
+      this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
+    } else {
+      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
     }
-    await this.publisher.init(tracks);
+  }
 
+  //create transport and publish tracks
+  async publish(track) {
+    if (this.publisher.state === 0) {
+      console.log('pub init');
+
+      this.publisher.state = 1;
+
+      await this.fetchTransportParameters('pub');
+      //init pub
+      this.publisher.init();
+
+      //TODO: mv to init
+      this.publisher.onsenderclosed = async producerId=>{
+        await this.socket.request({
+          event: 'closeProducer',
+          data: {
+            transportId: this.publisher.id,
+            producerId
+          }
+        })
+      };
+
+      this.publisher.ondtls = async dtlsParameters => {
+        await this.socket.request({
+          event: 'dtls',
+          data: {
+            transportId: this.publisher.id,
+            role: 'pub',
+            dtlsParameters
+          }
+        });
+      };
+
+      this.publisher.onproduce = async producingParameters => {
+        const data = await this.socket.request({
+          event: 'produce',
+          data: {
+            transportId: this.publisher.id,
+            ...producingParameters
+          }
+        })
+        const { localId, producerId } = data;
+        const sender = this.publisher.setProducerId(localId,producerId);
+        this.onsender(sender);
+
+      }
+
+      console.log('pub init over');
+      this.publisher.state = 2;
+    }
+
+    if (this.publisher.state >= 2) {
+      console.log('pub send');
+      this.publisher.send(track);
+    }
+  }
+
+  async unpublish(sender){
+    this.publisher.stopSender(sender);
   }
 
   async subscribe(receiver) {
@@ -87,7 +131,7 @@ export default class Session {
         });
       };
 
-      this.subscriber.ontrack = track=>{
+      this.subscriber.ontrack = track => {
         this.ontrack(track);
       };
 

@@ -151,7 +151,7 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
         "uri": "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
       }
     ],
-    "setup": "active",
+    "setup": "",
     "mid": 0,
     "direction": "recvonly",
     "iceUfrag": "",
@@ -251,12 +251,55 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
         "uri": "urn:ietf:params:rtp-hdrext:toffset"
       }
     ],
-    "setup": "active",
+    "setup": "",
     "mid": 1,
     "direction": "recvonly",
     "iceUfrag": "",
     "icePwd": "",
     "candidates": [],
+    "endOfCandidates": "end-of-candidates",
+    "iceOptions": "renomination",
+    "rtcpMux": "rtcp-mux",
+    "rtcpRsize": "rtcp-rsize"
+  }
+
+  const inactiveAudioTemplate = {
+    "rtp": [
+      {
+        "payload": 111,
+        "codec": "opus",
+        "rate": 48000,
+        "encoding": 2
+      }
+    ],
+    "fmtp": [
+      {
+        "payload": 111,
+        "config": "stereo=1;usedtx=1"
+      }
+    ],
+    "type": "audio",
+    "port": 7,
+    "protocol": "UDP/TLS/RTP/SAVPF",
+    "payloads": 111,
+    "connection": {
+      "version": 4,
+      "ip": "127.0.0.1"
+    },
+    "rtcpFb": [
+      {
+        "payload": 111,
+        "type": "transport-cc",
+        "subtype": ""
+      }
+    ],
+    "setup": "",
+    "mid": 0,
+    "direction": "inactive",
+    "iceUfrag": "",
+    "icePwd": "",
+    "candidates": [
+    ],
     "endOfCandidates": "end-of-candidates",
     "iceOptions": "renomination",
     "rtcpMux": "rtcp-mux",
@@ -343,12 +386,17 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
   for (let sender of senders) {
     // console.log(videoTemplate);
 
-    if (!sender.isStopped) {
+    if (!sender.isStopped || sender.mid === '0') {
       let mediaObj;
       if (sender.kind === 'audio') {
         if (sender.available) {
           mediaObj = Object.assign({}, JSON.parse(JSON.stringify(audioTemplate)));
           mids.push(sender.mid);
+        } else {
+          mediaObj = Object.assign({}, JSON.parse(JSON.stringify(inactiveAudioTemplate)));
+          if (sender.mid === '0') {
+            mids.push(sender.mid);
+          }
         }
 
       } else if (sender.kind === 'video') {
@@ -357,11 +405,20 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
           mids.push(sender.mid);
         } else {
           mediaObj = Object.assign({}, JSON.parse(JSON.stringify(inactiveVideoTemplate)));
+          if (sender.mid === '0') {
+            mids.push(sender.mid);
+          }
         }
       } else {
         //todo
       }
 
+
+      if (remoteDTLSParameters.role === 'server') {
+        mediaObj.setup = 'passive'
+      } else if (remoteDTLSParameters.role === 'client') {
+        mediaObj.setup = 'active'
+      }
 
       mediaObj.iceUfrag = remoteICEParameters.usernameFragment;
       mediaObj.icePwd = remoteICEParameters.password;
@@ -390,12 +447,16 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
   remoteSdpObj.media = medias;
 
-  return sdpTransform.write(remoteSdpObj);
+
+  let remoteSdp = new RTCSessionDescription({
+    type: 'answer',
+    sdp: sdpTransform.write(remoteSdpObj)
+  });
+
+  return remoteSdp;
 }
 
-export function getDtls(localSdp) {
-  let localSdpObj = sdpTransform.parse(localSdp);
-
+export function getDtls(localSdpObj) {
   // console.log(JSON.stringify(localSdpObj));
   for (let media of localSdpObj.media) {
     if (media.fingerprint) {

@@ -2,6 +2,8 @@ export default class Sender {
   constructor(track, transceiver) {
     this.track = track;
     this.transceiver = transceiver;
+
+    this.producerId = 0;
   }
 
   get id() {
