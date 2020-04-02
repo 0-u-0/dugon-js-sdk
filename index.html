@@ -1,95 +1,190 @@
-<video id='player' autoplay controls></video>
-<script src="bundle.js"></script>
-<script>
-  const urlObject = new URL(document.location.href);
-  const t = urlObject.searchParams.get("type");
+<body>
+  <script src="bundle.js"></script>
+  <script>
+    const urlObject = new URL(document.location.href);
+    const t = urlObject.searchParams.get("type");
 
-  function randomInitId(length) {
-    let randomNum = 0;
-    while (randomNum < 0.1) {
-      randomNum = Math.random();
-    }
-    return parseInt(randomNum * Math.pow(10, length))
-  }
+    function initCanvas() {
+      const canvas = document.createElement("canvas")
+      var context = canvas.getContext('2d');
 
-  let session;
-  let audioTrack;
-  let videoTrack;
-  async function main() {
-    if (t == '1') {
-      //track
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      [audioTrack] = stream.getAudioTracks();
-      [videoTrack] = stream.getVideoTracks();
+      document.body.append(canvas);
 
-      audioTrack.stream = stream;
-      videoTrack.stream = stream;
+      var clickX = new Array();
+      var clickY = new Array();
+      var clickDrag = new Array();
+      var paint;
 
-      console.log(audioTrack.id)
-      console.log(videoTrack.id)
-
-      //session
-      const sessionId = 'test';
-      const tokenId = randomInitId(8);
-      session = new Dugon.Session(sessionId, tokenId, {
-        url: `ws://127.0.0.1:8800`
-      });
-
-      session.onin = tokenId => {
-        console.log(tokenId, ' in');
-      };
-
-      session.onout = tokenId => {
-        console.log(tokenId, ' out');
-      };
-
-      session.onsender = sender => {
-        // session.unpublish(sender);
-        // if (sender.id == videoTrack.id) {
-        //   session.unpublish(sender);
-        // }
-      };
-
-      await session.init();
-
-      await session.publish(audioTrack);
-      await session.publish(videoTrack);
-      // await session.
-    } else {
-      //session
-      const sessionId = 'test';
-      const tokenId = randomInitId(8);
-      session = new Dugon.Session(sessionId, tokenId, {
-        url: `ws://127.0.0.1:8800`
-      });
-
-      session.onin = tokenId => {
-        console.log(tokenId, ' in');
-      };
-
-
-      session.onout = tokenId => {
-        console.log(tokenId, ' out');
-      };
-
-      session.ontrack = track => {
-        const stream = new MediaStream();
-        stream.addTrack(track);
-
-        document.querySelector('#player').srcObject = stream;
+      function addClick(x, y, dragging) {
+        clickX.push(x);
+        clickY.push(y);
+        clickDrag.push(dragging);
       }
 
-      session.onreceiver = (receiver, tokenId, producerId, metadata) => {
-        session.subscribe(receiver);
+      canvas.setAttribute("width", 300);
+      canvas.setAttribute("height", 300);
+      canvas.style.backgroundColor = "pink"
+
+      canvas.onmousedown = function (e) {
+        var mouseX = e.pageX - this.offsetLeft;
+        var mouseY = e.pageY - this.offsetTop;
+
+        paint = true;
+        addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
+        redraw();
       };
 
-      await session.init();
+      canvas.onmousemove = function (e) {
+        if (paint) {
+          addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, true);
+          redraw();
+        }
+      };
+      canvas.onmouseup = function (e) {
+        paint = false;
+      };
+
+      canvas.onmouseleave = function (e) {
+        paint = false;
+      };
+
+      function redraw() {
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
+
+        context.strokeStyle = "#df4b26";
+        context.lineJoin = "round";
+        context.lineWidth = 5;
+
+        for (var i = 0; i < clickX.length; i++) {
+          context.beginPath();
+          if (clickDrag[i] && i) {
+            context.moveTo(clickX[i - 1], clickY[i - 1]);
+          } else {
+            context.moveTo(clickX[i] - 1, clickY[i]);
+          }
+          context.lineTo(clickX[i], clickY[i]);
+          context.closePath();
+          context.stroke();
+        }
+      }
+
+      // var ctx = canvas[0].getContext("2d");
+      // ctx.fillStyle = "green";
+      // draw(ctx);
+
+      return canvas;
     }
 
 
+    function randomInitId(length) {
+      let randomNum = 0;
+      while (randomNum < 0.1) {
+        randomNum = Math.random();
+      }
+      return parseInt(randomNum * Math.pow(10, length))
+    }
 
-  }
+    let session;
+    let audioTrack;
+    let videoTrack;
+    async function main() {
+      if (t == '1') {
+        //screen sharing
+        const shareStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+        const [svideoTrack] = shareStream.getVideoTracks();
 
-  main();
 
-</script>
+        //canvas
+        const canvas = initCanvas();
+        const [cVideoTrack] = canvas.captureStream(30).getVideoTracks();
+
+        //mic, cam
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        [audioTrack] = stream.getAudioTracks();
+        [videoTrack] = stream.getVideoTracks();
+
+        audioTrack.stream = stream;
+        videoTrack.stream = stream;
+
+        console.log(audioTrack.id)
+        console.log(videoTrack.id)
+
+        //session
+        const sessionId = 'test';
+        const tokenId = randomInitId(8);
+        session = new Dugon.Session(sessionId, tokenId, {
+          url: `ws://127.0.0.1:8800`
+        });
+
+        session.onin = tokenId => {
+          console.log(tokenId, ' in');
+        };
+
+        session.onout = tokenId => {
+          console.log(tokenId, ' out');
+        };
+
+        session.onsender = sender => {
+          // session.unpublish(sender);
+          // if (sender.id == videoTrack.id) {
+          //   session.unpublish(sender);
+          // }
+        };
+
+        await session.init({ pub: true, sub: false });
+
+        session.publish(audioTrack);
+        session.publish(videoTrack);
+        session.publish(cVideoTrack);
+        session.publish(svideoTrack);
+
+
+        // await session.
+      } else {
+        //session
+        const sessionId = 'test';
+        const tokenId = randomInitId(8);
+        session = new Dugon.Session(sessionId, tokenId, {
+          url: `ws://127.0.0.1:8800`
+        });
+
+        session.onin = tokenId => {
+          console.log(tokenId, ' in');
+        };
+
+
+        session.onout = tokenId => {
+          console.log(tokenId, ' out');
+        };
+
+        session.ontrack = track => {
+          console.log('ontrack');
+          const stream = new MediaStream();
+          stream.addTrack(track);
+
+          const newVideo = document.createElement('video');
+          newVideo.style.width = "300px";
+          newVideo.style.width = "300px";
+          newVideo.autoplay = true;
+          newVideo.controls = true;
+
+          newVideo.srcObject = stream;
+          document.body.append(newVideo);
+
+        }
+
+        session.onreceiver = (receiver, tokenId, producerId, metadata) => {
+          session.subscribe(receiver);
+        };
+
+        await session.init({ pub: false, sub: true });
+      }
+
+
+
+    }
+
+    main();
+
+  </script>
+</body>

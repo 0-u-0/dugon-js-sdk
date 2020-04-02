@@ -101,6 +101,26 @@ export default class Session {
 
     } else {
       this.subscriber = new Subscriber(id, iceCandidates, iceParameters, dtlsParameters);
+
+      this.subscriber.ondtls = async dtlsParameters => {
+        await this.socket.request({
+          event: 'dtls',
+          data: {
+            transportId: this.subscriber.id,
+            role: 'sub',
+            dtlsParameters
+          }
+        });
+      };
+
+      this.subscriber.ontrack = track => {
+        this.ontrack(track);
+      };
+
+      this.subscriber.init();
+
+      //TODO: state change
+
     }
 
   }
@@ -118,47 +138,7 @@ export default class Session {
   }
 
   async subscribe(receiver) {
-    console.log('subscribe');
-    if (this.subscriber.state === Transport.TRANSPORT_NEW) {
-      this.subscriber.state = Transport.TRANSPORT_CONNECTING;
-
-      this.subscriber.ondtls = async dtlsParameters => {
-        await this.socket.request({
-          event: 'dtls',
-          data: {
-            transportId: this.subscriber.id,
-            role: 'sub',
-            dtlsParameters
-          }
-        });
-      };
-
-      this.subscriber.ontrack = track => {
-        this.ontrack(track);
-      };
-
-      await this.fetchTransportParameters('sub');
-
-      const consumerParameters = await this.socket.request({
-        event: 'consume',
-        data: {
-          tokenId: receiver.tokenId,
-          producerId: receiver.producerId,
-          transportId: this.subscriber.id
-        }
-      })
-
-      receiver.active = true;
-
-      const { consumerId, kind, rtpParameters, type, producerPaused, producerId } = consumerParameters;
-      receiver.consumerId = consumerId;
-      receiver.kind = kind;
-      receiver.rtpParameters = rtpParameters;
-
-      await this.subscriber.init();
-
-    }
-
+    this.subscriber.receive(receiver);
   }
 
   async fetchTransportParameters(role) {
@@ -192,8 +172,8 @@ export default class Session {
         break;
       };
       case 'produce': {
-        let { producerId, tokenId, metadata } = data;
-        let receiver = this.subscriber.addReceiver(producerId, tokenId, metadata);
+        let { producerId, tokenId, metadata, kind, rtpParameters, consumerId } = data;
+        let receiver = this.subscriber.addReceiver(producerId, tokenId, consumerId, kind ,rtpParameters, metadata);
         this.onreceiver(receiver, tokenId, producerId, metadata);
         break;
       };

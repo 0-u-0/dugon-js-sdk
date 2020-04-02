@@ -1,9 +1,12 @@
+import sdpTransform from 'sdp-transform';
+
 import AsyncQueue from './asyncQueue';
 import Transport from './transport';
 
+import Receiver from './receiver';
+
 import { getDtls } from './utils';
 
-import sdpTransform from 'sdp-transform';
 
 function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
 
@@ -179,7 +182,9 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
 
   let medias = [];
 
+  let mids = [];
   for (let [key, receiver] of receivers) {
+    // console.log(receiver);
     if (receiver.kind === 'audio') {
       let media = Object.assign({}, audioTemplate);
       console.log(receiver.mid);
@@ -202,30 +207,46 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       ]
       medias.push(media);
     } else if (receiver.kind == 'video') {
+      let media = Object.assign({}, videoTemplate);
+      console.log(receiver.mid);
+      media.mid = String(receiver.mid);
+      media.msid = `${receiver.consumerId} ${receiver.rtpParameters.rtcp.cname}`
+      media.iceUfrag = remoteICEParameters.usernameFragment;
+      media.icePwd = remoteICEParameters.password;
 
+      for (let i in remoteICECandidates) {
+        let candidate = remoteICECandidates[i];
+        media.candidates.push(Object.assign(candidate, { component: 1, transport: candidate.protocol }))
+      }
+
+      media.ssrcs = [
+        {
+          "id": receiver.rtpParameters.encodings[0].ssrc,
+          "attribute": "cname",
+          "value": receiver.rtpParameters.rtcp.cname
+        }
+      ]
+      medias.push(media);
     }
+
+    mids.push(receiver.mid);
   }
 
 
   remoteSdpObj.media = medias;
+
+  remoteSdpObj.groups = [
+    {
+      "type": "BUNDLE",
+      "mids": mids.join(" ")
+    }
+  ]
 
   let remoteSdp = sdpTransform.write(remoteSdpObj);
 
   console.log(remoteSdp);
 
   return remoteSdp;
-}
-
-class Receiver {
-  constructor(producerId, tokenId, metadata) {
-    this.producerId = producerId;
-    this.tokenId = tokenId;
-    this.metadata = metadata;
-
-    this.consumerId = null;
-
-    this.active = false;
-  }
 }
 
 export default class Subscriber extends Transport {
@@ -238,19 +259,27 @@ export default class Subscriber extends Transport {
 
     this.state = Transport.TRANSPORT_NEW;
 
+    this.isGotDtls = false;
+
     this.currentMid = 0;
 
   }
 
-  addReceiver(producerId, tokenId, metadata) {
-    const receiver = new Receiver(producerId, tokenId, metadata);
+  addReceiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata) {
+    const receiver = new Receiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata);
     receiver.mid = String(this.currentMid++);
     this.receivers.set(producerId, receiver);
     return receiver;
   }
 
-  async init() {
-    this.pc = new RTCPeerConnection();
+  receive(receiver) {
+    this.asyncQueue.push(this, this._receive, receiver);
+  }
+
+  async _receive(receiver) {
+    if (!receiver.active) {
+      receiver.active = true;
+    }
 
     let remoteSdp = remoteSdpGenerator(this.receivers, this.remoteICECandidates,
       this.remoteICEParameters, this.remoteDTLSParameters);
@@ -262,32 +291,37 @@ export default class Subscriber extends Transport {
     let answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
-    //dtls
-    let dtls = getDtls(answer.sdp);
-    const dtlsParameters =
-    {
-      role: 'client',
-      fingerprints:
-        [
-          {
-            algorithm: dtls.type,
-            value: dtls.hash
-          }
-        ]
-    };
-
-    console.log(dtlsParameters);
-    this.ondtls(dtlsParameters);
-
     //track
-    for (let [key, receiver] of this.receivers) {
-      if (receiver.active) {
-        const transceiver = await this.pc.getTransceivers().find(t => t.mid === receiver.mid);
-        receiver.transceiver = transceiver;
-        this.ontrack(transceiver.receiver.track);
-      }
+    const transceiver = await this.pc.getTransceivers().find(t => t.mid === receiver.mid);
+    receiver.transceiver = transceiver;
+    this.ontrack(transceiver.receiver.track);
+
+    //TODO: consume resume
+
+    if (!this.isGotDtls) {
+      this.isGotDtls = true;
+      //dtls
+      let answerSdpObj = sdpTransform.parse(answer.sdp);
+      let dtls = getDtls(answerSdpObj);
+      const dtlsParameters =
+      {
+        role: 'client',
+        fingerprints:
+          [
+            {
+              algorithm: dtls.type,
+              value: dtls.hash
+            }
+          ]
+      };
+
+      this.ondtls(dtlsParameters);
     }
 
+  }
+
+  init() {
+    this.pc = new RTCPeerConnection();
   }
 }
 
