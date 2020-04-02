@@ -13,8 +13,8 @@ export default class Session {
 
     this.socket = null;
 
-    this.publisher = new Publisher();
-    this.subscriber = new Subscriber();
+    this.publisher = null;
+    this.subscriber = null;
 
     //event
     this.onin = null;
@@ -22,7 +22,10 @@ export default class Session {
     this.onsender = null;
   }
 
-  async init() {
+  async init(options = { pub: true, sub: true }) {
+    //TODO: set default value
+    const { pub, sub } = options;
+
     this.socket = new Socket(this.url, {
       'sessionId': this.sessionId,
       'tokenId': this.tokenId
@@ -34,24 +37,29 @@ export default class Session {
 
     await this.socket.init();
 
-    await this.socket.request({
-      event: 'join'
+    const transportParameters = await this.socket.request({
+      event: 'join',
+      data: {
+        pub,
+        sub,
+      }
     });
+    if (pub) {
+      this.initTransport('pub', transportParameters.pub);
+    }
+    if (sub) {
+      this.initTransport('sub', transportParameters.sub);
+    }
   }
 
-  //create transport and publish tracks
-  async publish(track) {
-    if (this.publisher.state === 0) {
-      console.log('pub init');
+  initTransport(role, transportParameters) {
+    const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
 
-      this.publisher.state = 1;
-
-      await this.fetchTransportParameters('pub');
-      //init pub
-      this.publisher.init();
+    if (role === 'pub') {
+      this.publisher = new Publisher(id, iceCandidates, iceParameters, dtlsParameters);
 
       //TODO: mv to init
-      this.publisher.onsenderclosed = async producerId=>{
+      this.publisher.onsenderclosed = async producerId => {
         await this.socket.request({
           event: 'closeProducer',
           data: {
@@ -81,22 +89,31 @@ export default class Session {
           }
         })
         const { localId, producerId } = data;
-        const sender = this.publisher.setProducerId(localId,producerId);
+        const sender = this.publisher.setProducerId(localId, producerId);
         this.onsender(sender);
 
       }
 
-      console.log('pub init over');
+      //init pub
+      this.publisher.init();
+
       this.publisher.state = 2;
+
+    } else {
+      this.subscriber = new Subscriber(id, iceCandidates, iceParameters, dtlsParameters);
     }
 
+  }
+
+  //create transport and publish tracks
+  async publish(track) {
     if (this.publisher.state >= 2) {
       console.log('pub send');
       this.publisher.send(track);
     }
   }
 
-  async unpublish(sender){
+  async unpublish(sender) {
     this.publisher.stopSender(sender);
   }
 

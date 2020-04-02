@@ -229,10 +229,8 @@ class Receiver {
 }
 
 export default class Subscriber extends Transport {
-  constructor() {
-    super();
-    this.id = null;
-    this.pc = null;
+  constructor(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
+    super(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters);
 
     this.receivers = new Map();
 

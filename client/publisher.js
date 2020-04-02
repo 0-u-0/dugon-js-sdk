@@ -7,8 +7,8 @@ import Sender from './sender';
 import Transport from './transport';
 
 export default class Publisher extends Transport {
-  constructor() {
-    super();
+  constructor(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
+    super(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters);
 
     this.senders = [];
 
