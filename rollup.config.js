@@ -8,9 +8,9 @@ import commonjs from '@rollup/plugin-commonjs';//Convert CommonJS modules to ES6
 
 
 export default {
-  input: './client/interface.js',
+  input: './src/interface.js',
   output: {
-    file: 'bundle.js',
+    file: 'dst/bundle.js',
     format: 'umd',
     name: 'Dugon',
   },
