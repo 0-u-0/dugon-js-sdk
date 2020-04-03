@@ -141,23 +141,6 @@ export default class Session {
     this.subscriber.receive(receiver);
   }
 
-  async fetchTransportParameters(role) {
-    const { transportParameters } = await this.socket.request({
-      event: 'transport',
-      data: {
-        role
-      }
-    });
-
-    const { id, iceCandidates, iceParameters, dtlsParameters } = transportParameters;
-
-    if (role === 'pub') {
-      this.publisher.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
-    } else {
-      this.subscriber.setTransport(id, iceCandidates, iceParameters, dtlsParameters);
-    }
-  }
-
   handleEvent(event, data) {
     console.log('event: ', event, data);
     switch (event) {
