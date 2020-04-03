@@ -90,13 +90,13 @@
     async function main() {
       if (t == '1') {
         //screen sharing
-        const shareStream = await navigator.mediaDevices.getDisplayMedia({video:true});
-        const [svideoTrack] = shareStream.getVideoTracks();
+        // const shareStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+        // const [svideoTrack] = shareStream.getVideoTracks();
 
 
         //canvas
-        const canvas = initCanvas();
-        const [cVideoTrack] = canvas.captureStream(30).getVideoTracks();
+        // const canvas = initCanvas();
+        // const [cVideoTrack] = canvas.captureStream(30).getVideoTracks();
 
         //mic, cam
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -134,9 +134,9 @@
         await session.init({ pub: true, sub: false });
 
         session.publish(audioTrack);
-        session.publish(videoTrack);
-        session.publish(cVideoTrack);
-        session.publish(svideoTrack);
+        // session.publish(videoTrack);
+        // session.publish(cVideoTrack);
+        // session.publish(svideoTrack);
 
 
         // await session.
