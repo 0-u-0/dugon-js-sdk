@@ -87,6 +87,43 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
     "rtcpRsize": "rtcp-rsize"
   }
 
+  const inactiveAudioTemplate = {
+    "rtp": [
+      {
+        "payload": 100,
+        "codec": "opus",
+        "rate": 48000,
+        "encoding": 2
+      }
+    ],
+    "fmtp": [
+      {
+        "payload": 100,
+        "config": "minptime=10;useinbandfec=1;sprop-stereo=1;usedtx=1"
+      }
+    ],
+    "type": "audio",
+    "port": 7,
+    "protocol": "UDP/TLS/RTP/SAVPF",
+    "payloads": 100,
+    "connection": {
+      "version": 4,
+      "ip": "127.0.0.1"
+    },
+    "setup": "actpass",
+    "mid": 0,
+    "msid": "",
+    "direction": "inactive",
+    "iceUfrag": "",
+    "icePwd": "",
+    "candidates": [],
+    "endOfCandidates": "end-of-candidates",
+    "iceOptions": "renomination",
+    "ssrcs": [],
+    "rtcpMux": "rtcp-mux",
+    "rtcpRsize": "rtcp-rsize"
+  }
+
   const videoTemplate = {
     "rtp": [
       {
@@ -173,6 +210,70 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
     "rtcpRsize": "rtcp-rsize"
   }
 
+  const inactiveVideoTemplate = {
+    "rtp": [
+      {
+        "payload": 101,
+        "codec": "VP8",
+        "rate": 90000
+      },
+      {
+        "payload": 102,
+        "codec": "rtx",
+        "rate": 90000
+      }
+    ],
+    "fmtp": [
+      {
+        "payload": 102,
+        "config": "apt=101"
+      }
+    ],
+    "type": "video",
+    "port": 7,
+    "protocol": "UDP/TLS/RTP/SAVPF",
+    "payloads": "101 102",
+    "connection": {
+      "version": 4,
+      "ip": "127.0.0.1"
+    },
+    "rtcpFb": [
+      {
+        "payload": 101,
+        "type": "transport-cc",
+        "subtype": ""
+      },
+      {
+        "payload": 101,
+        "type": "ccm",
+        "subtype": "fir"
+      },
+      {
+        "payload": 101,
+        "type": "nack",
+        "subtype": ""
+      },
+      {
+        "payload": 101,
+        "type": "nack",
+        "subtype": "pli"
+      }
+    ],
+    "setup": "actpass",
+    "mid": 1,
+    "msid": "",
+    "direction": "inactive",
+    "iceUfrag": "",
+    "icePwd": "",
+    "candidates": [],
+    "endOfCandidates": "end-of-candidates",
+    "iceOptions": "renomination",
+    "ssrcs": [],
+    "ssrcGroups": [],
+    "rtcpMux": "rtcp-mux",
+    "rtcpRsize": "rtcp-rsize"
+  }
+
   const remoteSdpObj = Object.assign({}, sdpTemplate);
 
   remoteSdpObj.fingerprint = {
@@ -186,8 +287,14 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
   for (let [key, receiver] of receivers) {
     // console.log(receiver);
     if (receiver.kind === 'audio') {
-      let media = Object.assign({}, audioTemplate);
-      console.log(receiver.mid);
+      let media;
+
+      if (receiver.active) {
+        media = Object.assign({}, audioTemplate);
+      } else {
+        media = Object.assign({}, inactiveAudioTemplate);
+      }
+
       media.mid = String(receiver.mid);
       media.msid = `${receiver.consumerId} ${receiver.rtpParameters.rtcp.cname}`
       media.iceUfrag = remoteICEParameters.usernameFragment;
@@ -207,7 +314,14 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       ]
       medias.push(media);
     } else if (receiver.kind == 'video') {
-      let media = Object.assign({}, videoTemplate);
+
+      let media;
+      if (receiver.active) {
+        media = Object.assign({}, videoTemplate);
+      } else {
+        media = Object.assign({}, inactiveVideoTemplate);
+
+      }
       console.log(receiver.mid);
       media.mid = String(receiver.mid);
       media.msid = `${receiver.consumerId} ${receiver.rtpParameters.rtcp.cname}`
@@ -294,9 +408,9 @@ export default class Subscriber extends Transport {
     //track
     const transceiver = await this.pc.getTransceivers().find(t => t.mid === receiver.mid);
     receiver.transceiver = transceiver;
-    this.ontrack(transceiver.receiver.track);
+    this.ontrack(transceiver.receiver.track,receiver);
 
-    //TODO: consume resume
+    //TODO: consumer resume
 
     if (!this.isGotDtls) {
       this.isGotDtls = true;
@@ -318,6 +432,26 @@ export default class Subscriber extends Transport {
       this.ondtls(dtlsParameters);
     }
 
+  }
+
+  removeReceiver(receiver) {
+    this.asyncQueue.push(this, this._removeReceiver, receiver);
+  }
+
+  async _removeReceiver(receiver) {
+    receiver.active = false;
+
+    let remoteSdp = remoteSdpGenerator(this.receivers, this.remoteICECandidates,
+      this.remoteICEParameters, this.remoteDTLSParameters);
+
+    await this.pc.setRemoteDescription(new RTCSessionDescription({
+      type: 'offer',
+      sdp: remoteSdp
+    }))
+    let answer = await this.pc.createAnswer();
+    await this.pc.setLocalDescription(answer);
+
+    this.onremovereceiver(receiver);
   }
 
   init() {

@@ -134,7 +134,7 @@
         await session.init({ pub: true, sub: false });
 
         session.publish(audioTrack);
-        // session.publish(videoTrack);
+        session.publish(videoTrack);
         // session.publish(cVideoTrack);
         // session.publish(svideoTrack);
 
@@ -157,12 +157,13 @@
           console.log(tokenId, ' out');
         };
 
-        session.ontrack = track => {
+        session.ontrack = (track, receiver) => {
           console.log('ontrack');
           const stream = new MediaStream();
           stream.addTrack(track);
 
           const newVideo = document.createElement('video');
+          newVideo.id = `video-${receiver.producerId}`;
           newVideo.style.width = "300px";
           newVideo.style.width = "300px";
           newVideo.autoplay = true;
@@ -175,6 +176,10 @@
 
         session.onreceiver = (receiver, tokenId, producerId, metadata) => {
           session.subscribe(receiver);
+        };
+
+        session.onunreceiver = (receiver) => {
+          document.querySelector(`#video-${receiver.producerId}`).remove();
         };
 
         await session.init({ pub: false, sub: true });

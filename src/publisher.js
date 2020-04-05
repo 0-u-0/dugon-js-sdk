@@ -102,7 +102,7 @@ export default class Publisher extends Transport {
       producingData.metadata = {
         test: 'test'
       };
-      this.onproduce(producingData);
+      this.onproduce(producingData, sender);
     }
 
   }
@@ -119,7 +119,7 @@ export default class Publisher extends Transport {
 
       let localSdpObj = sdpTransform.parse(localSdp.sdp);
       await this.pc.setLocalDescription(localSdp);
-      let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
+      let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters, sender);
       await this.pc.setRemoteDescription(remoteSdp);
 
       this.onsenderclosed(sender.producerId);

@@ -31,8 +31,8 @@ export default class Session {
       'tokenId': this.tokenId
     });
 
-    this.socket.onevent = (event, data) => {
-      this.handleEvent(event, data);
+    this.socket.onnotification = (event, data) => {
+      this.handleNotification(event, data);
     }
 
     await this.socket.init();
@@ -80,7 +80,7 @@ export default class Session {
         });
       };
 
-      this.publisher.onproduce = async producingParameters => {
+      this.publisher.onproduce = async (producingParameters, sender) => {
         const data = await this.socket.request({
           event: 'produce',
           data: {
@@ -89,7 +89,7 @@ export default class Session {
           }
         })
         const { localId, producerId } = data;
-        const sender = this.publisher.setProducerId(localId, producerId);
+        sender.producerId = producerId;
         this.onsender(sender);
 
       }
@@ -113,8 +113,12 @@ export default class Session {
         });
       };
 
-      this.subscriber.ontrack = track => {
-        this.ontrack(track);
+      this.subscriber.ontrack = (track, receiver) => {
+        this.ontrack(track, receiver);
+      };
+
+      this.subscriber.onremovereceiver = receiver => {
+        this.onunreceiver(receiver);
       };
 
       this.subscriber.init();
@@ -141,8 +145,32 @@ export default class Session {
     this.subscriber.receive(receiver);
   }
 
-  handleEvent(event, data) {
-    console.log('event: ', event, data);
+  async unsubscribe(receiver) {
+    if (receiver.active) {
+      this.subscriber.removeReceiver(receiver);
+      await this.socket.request({
+        event: 'unsubscribe',
+        data: {
+          transportId: this.subscriber.id,
+          producerId: receiver.producerId,
+          consumerId: receiver.consumerId
+        }
+      })
+    }
+  }
+
+  async pause() {
+
+  }
+
+  async resume() {
+
+  }
+
+
+
+  handleNotification(event, data) {
+    console.log('notification: ', event, data);
     switch (event) {
       case 'join': {
         let { tokenId } = data;
@@ -156,10 +184,21 @@ export default class Session {
       };
       case 'produce': {
         let { producerId, tokenId, metadata, kind, rtpParameters, consumerId } = data;
-        let receiver = this.subscriber.addReceiver(producerId, tokenId, consumerId, kind ,rtpParameters, metadata);
+        let receiver = this.subscriber.addReceiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata);
         this.onreceiver(receiver, tokenId, producerId, metadata);
         break;
       };
+      case 'closeProducer': {
+        let { producerId, tokenId } = data;
+        let receiver = this.subscriber.receivers.get(producerId);
+
+        if (receiver.active) {
+          this.subscriber.removeReceiver(receiver);
+        }
+
+
+        break;
+      }
       default: {
         console.log('unknown event ', event);
       }

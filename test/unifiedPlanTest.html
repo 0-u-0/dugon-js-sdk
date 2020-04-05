@@ -1,0 +1,113 @@
+<script src="../dst/bundle.js"></script>
+<script>
+
+  let pc1;
+  let pc2;
+
+  let transceiver1;
+  let transceiver2;
+
+  let track1;
+  let track2;
+
+  async function logTrackIds() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    [track1, track2] = stream.getTracks();
+
+
+    pc1 = new RTCPeerConnection();
+    pc2 = new RTCPeerConnection();
+
+    pc1.onicecandidate = event => {
+      if (event.candidate) {
+        pc2.addIceCandidate(event.candidate);
+      }
+    }
+
+    pc2.onicecandidate = event => {
+      if (event.candidate) {
+        pc1.addIceCandidate(event.candidate);
+      }
+    }
+
+    transceiver1 = await pc1.addTransceiver(track1, {
+      direction: 'sendonly',
+      //TODO: streams: [t.stream]
+    });
+    transceiver2 = await pc1.addTransceiver(track2, {
+      direction: 'sendonly',
+      //TODO: streams: [t.stream]
+    });
+    setSdp();
+
+  }
+
+  async function setSdp() {
+    const offer = await pc1.createOffer();
+    await pc1.setLocalDescription(offer);
+    await pc2.setRemoteDescription(offer);
+    const answer = await pc2.createAnswer();
+    await pc2.setLocalDescription(answer);
+    await pc1.setRemoteDescription(answer);
+  }
+
+  async function setSdp1() {
+    pc1.removeTrack(transceiver2.sender);
+
+    const offer = await pc1.createOffer();
+
+    await pc1.setLocalDescription(offer);
+    await pc2.setRemoteDescription(offer);
+    const answer = await pc2.createAnswer();
+
+    let sdpObject = Dugon.sdpTransform.parse(answer.sdp);
+    console.log(sdpObject);
+    sdpObject.groups[0].mids = '0';
+    const newAnswer = new RTCSessionDescription({ type: 'answer', sdp: Dugon.sdpTransform.write(sdpObject) });
+
+    await pc2.setLocalDescription(answer);
+    await pc1.setRemoteDescription(newAnswer);
+  }
+
+  async function setSdp2() {
+    const offer = await pc1.createOffer();
+    let sdpObject = Dugon.sdpTransform.parse(offer.sdp);
+    console.log(sdpObject);
+    sdpObject.groups[0].mids = '0';
+    sdpObject.media = [sdpObject.media[0]];
+
+    const newOffer = new RTCSessionDescription({ type: 'offer', sdp: Dugon.sdpTransform.write(sdpObject) });
+
+    await pc1.setLocalDescription(newOffer);
+    await pc2.setRemoteDescription(newOffer);
+    const answer = await pc2.createAnswer();
+    await pc2.setLocalDescription(answer);
+    await pc1.setRemoteDescription(answer);
+  }
+
+  async function setSdp3() {
+    const offer = await pc1.createOffer();
+    let sdpObject = Dugon.sdpTransform.parse(offer.sdp);
+    console.log(sdpObject);
+
+    sdpObject.media[1].direction = 'inactive';
+
+    const newOffer = new RTCSessionDescription({ type: 'offer', sdp: Dugon.sdpTransform.write(sdpObject) });
+
+    await pc1.setLocalDescription(newOffer);
+    await pc2.setRemoteDescription(newOffer);
+    const answer = await pc2.createAnswer();
+    await pc2.setLocalDescription(answer);
+    await pc1.setRemoteDescription(answer);
+  }
+
+
+
+
+
+  // Main:
+  (async function () {
+    await logTrackIds('unified-plan');
+  })();
+
+</script>

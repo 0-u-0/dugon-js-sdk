@@ -45,7 +45,7 @@ export default class Socket {
         }
       } else if (method === 'notification') {
         let {event, data} = params;
-        this.onevent(event,data); 
+        this.onnotification(event,data); 
       }
     };
 
