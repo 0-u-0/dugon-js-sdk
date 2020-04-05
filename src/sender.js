@@ -3,7 +3,7 @@ export default class Sender {
     this.track = track;
     this.transceiver = transceiver;
 
-    this.producerId = 0;
+    this.senderId = 0;
   }
 
   get id() {

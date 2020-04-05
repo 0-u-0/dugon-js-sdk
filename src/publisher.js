@@ -1,6 +1,6 @@
 import sdpTransform from 'sdp-transform';
 
-import { remoteSdpGen, getDtls, getProduceData } from './utils';
+import { remoteSdpGen, getDtls, getSenderData } from './utils';
 import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
@@ -94,15 +94,13 @@ export default class Publisher extends Transport {
 
     await this.pc.setRemoteDescription(remoteSdp);
 
-    /*
-    /* produce
-    */
-    const producingData = getProduceData(sender);
+
+    const producingData = getSenderData(sender);
     if (producingData) {
       producingData.metadata = {
         test: 'test'
       };
-      this.onproduce(producingData, sender);
+      this.onsender(producingData, sender);
     }
 
   }
@@ -112,7 +110,7 @@ export default class Publisher extends Transport {
   }
   async _stopSender(sender) {
     //TODO: check sender 
-    if (sender && sender.producerId != 0) {
+    if (sender && sender.senderId != 0) {
       this.pc.removeTrack(sender.transceiver.sender);
 
       let localSdp = await this.pc.createOffer();
@@ -122,18 +120,8 @@ export default class Publisher extends Transport {
       let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters, sender);
       await this.pc.setRemoteDescription(remoteSdp);
 
-      this.onsenderclosed(sender.producerId);
+      this.onsenderclosed(sender.senderId);
     }
-  }
-
-  setProducerId(localId, producerId) {
-    for (let sender of this.senders) {
-      if (localId === sender.id) {
-        sender.producerId = producerId;
-        return sender;
-      }
-    }
-    return null;
   }
 
 }

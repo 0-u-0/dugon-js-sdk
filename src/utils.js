@@ -396,7 +396,7 @@ export function getDtls(localSdpObj) {
   }
 }
 
-export function getProduceData(sender) {
+export function getSenderData(sender) {
   let producingData;
   if (sender.kind === 'audio') {
     const sendingRtpParameters = {

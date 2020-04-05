@@ -296,7 +296,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       }
 
       media.mid = String(receiver.mid);
-      media.msid = `${receiver.consumerId} ${receiver.rtpParameters.rtcp.cname}`
+      media.msid = `${receiver.receiverId} ${receiver.rtpParameters.rtcp.cname}`
       media.iceUfrag = remoteICEParameters.usernameFragment;
       media.icePwd = remoteICEParameters.password;
 
@@ -324,7 +324,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       }
       console.log(receiver.mid);
       media.mid = String(receiver.mid);
-      media.msid = `${receiver.consumerId} ${receiver.rtpParameters.rtcp.cname}`
+      media.msid = `${receiver.receiverId} ${receiver.rtpParameters.rtcp.cname}`
       media.iceUfrag = remoteICEParameters.usernameFragment;
       media.icePwd = remoteICEParameters.password;
 
@@ -379,10 +379,10 @@ export default class Subscriber extends Transport {
 
   }
 
-  addReceiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata) {
-    const receiver = new Receiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata);
+  addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata) {
+    const receiver = new Receiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata);
     receiver.mid = String(this.currentMid++);
-    this.receivers.set(producerId, receiver);
+    this.receivers.set(senderId, receiver);
     return receiver;
   }
 

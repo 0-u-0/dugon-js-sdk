@@ -59,12 +59,12 @@ export default class Session {
       this.publisher = new Publisher(id, iceCandidates, iceParameters, dtlsParameters);
 
       //TODO: mv to init
-      this.publisher.onsenderclosed = async producerId => {
+      this.publisher.onsenderclosed = async senderId => {
         await this.socket.request({
-          event: 'closeProducer',
+          event: 'unpublish',
           data: {
             transportId: this.publisher.id,
-            producerId
+            senderId
           }
         })
       };
@@ -80,16 +80,16 @@ export default class Session {
         });
       };
 
-      this.publisher.onproduce = async (producingParameters, sender) => {
+      this.publisher.onsender = async (producingParameters, sender) => {
         const data = await this.socket.request({
-          event: 'produce',
+          event: 'publish',
           data: {
             transportId: this.publisher.id,
             ...producingParameters
           }
         })
-        const { localId, producerId } = data;
-        sender.producerId = producerId;
+        const { localId, senderId } = data;
+        sender.senderId = senderId;
         this.onsender(sender);
 
       }
@@ -152,8 +152,7 @@ export default class Session {
         event: 'unsubscribe',
         data: {
           transportId: this.subscriber.id,
-          producerId: receiver.producerId,
-          consumerId: receiver.consumerId
+          senderId: receiver.senderId,
         }
       })
     }
@@ -182,20 +181,19 @@ export default class Session {
         this.onout(tokenId);
         break;
       };
-      case 'produce': {
-        let { producerId, tokenId, metadata, kind, rtpParameters, consumerId } = data;
-        let receiver = this.subscriber.addReceiver(producerId, tokenId, consumerId, kind, rtpParameters, metadata);
-        this.onreceiver(receiver, tokenId, producerId, metadata);
+      case 'publish': {
+        let { senderId, tokenId, metadata, kind, rtpParameters, receiverId } = data;
+        let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata);
+        this.onreceiver(receiver, tokenId, senderId, metadata);
         break;
       };
-      case 'closeProducer': {
-        let { producerId, tokenId } = data;
-        let receiver = this.subscriber.receivers.get(producerId);
+      case 'unpublish': {
+        let { senderId, tokenId } = data;
+        let receiver = this.subscriber.receivers.get(senderId);
 
         if (receiver.active) {
           this.subscriber.removeReceiver(receiver);
         }
-
 
         break;
       }

@@ -1,8 +1,8 @@
 export default class Receiver {
-  constructor(producerId, tokenId, consumerId, kind, rtpParameters, metadata) {
-    this.producerId = producerId;
+  constructor(senderId, tokenId, receiverId, kind, rtpParameters, metadata) {
+    this.senderId = senderId;
     this.tokenId = tokenId;
-    this.consumerId = consumerId;
+    this.receiverId = receiverId;
     this.rtpParameters = rtpParameters;
 
     this.kind = kind;
