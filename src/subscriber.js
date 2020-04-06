@@ -379,6 +379,14 @@ export default class Subscriber extends Transport {
 
   }
 
+  removeReceiverByTokenId(tokenId) {
+    for (let [_, receiver] of this.receivers) {
+      if (tokenId === receiver.tokenId) {
+        this.removeReceiver(receiver);
+      }
+    }
+  }
+
   addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata) {
     const receiver = new Receiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata);
     receiver.mid = String(this.currentMid++);
@@ -408,7 +416,7 @@ export default class Subscriber extends Transport {
     //track
     const transceiver = await this.pc.getTransceivers().find(t => t.mid === receiver.mid);
     receiver.transceiver = transceiver;
-    this.ontrack(transceiver.receiver.track,receiver);
+    this.ontrack(transceiver.receiver.track, receiver);
 
     //TODO: consumer resume
 
