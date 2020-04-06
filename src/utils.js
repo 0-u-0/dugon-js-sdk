@@ -270,8 +270,6 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
   }
 
   //todo fix
-
-
   remoteSdpObj.groups = [
     {
       "type": "BUNDLE",
