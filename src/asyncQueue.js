@@ -27,21 +27,6 @@ export default class AsyncQueue {
 }
 
 
-// function t1(time) {
-//   return new Promise((y, n) => {
-//     setTimeout(function () {
-//       console.log(time);
-//       console.log(new Date())
-//       y();
-//     }, time);
-//   });
-// }
-
-// let a = new AsyncQueue();
-// a.push(t1, 1000);
-// a.push(t1, 3000);
-
-
 
 
 
