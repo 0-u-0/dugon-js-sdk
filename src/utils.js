@@ -9,9 +9,9 @@ export function randomInitId(length) {
 }
 
 class TrackSdp {
-  constructor(codec, payload, type, direction) {
+  constructor(codec, payloads, type, direction) {
     this.codec = codec;
-    this.payload = payload;
+    this.payloads = payloads;
 
     this.type = type;
 
@@ -21,7 +21,8 @@ class TrackSdp {
   generate(isActive, mid, setup, fingerprint, iceUfrag, icePwd, candidates) {
     const template = {};
 
-    const rtp = [
+    //audio
+    const audioRtp = [
       {
         "payload": 111,
         "codec": "opus",
@@ -30,7 +31,7 @@ class TrackSdp {
       }
     ];
 
-    const ftmp = [
+    const audioFtmp = [
       {
         "payload": 111,
         "config": "stereo=1;usedtx=1"
@@ -38,7 +39,7 @@ class TrackSdp {
 
     ]
 
-    const rtcpFb = [
+    const audioRtcpFb = [
       {
         "payload": 111,
         "type": "transport-cc",
@@ -46,7 +47,7 @@ class TrackSdp {
       }
     ];
 
-    const ext = [
+    const audioExt = [
       {
         "value": 4,
         "uri": "urn:ietf:params:rtp-hdrext:sdes:mid"
@@ -65,6 +66,102 @@ class TrackSdp {
       }
     ];
 
+    //video
+    const videoRtp = [
+      {
+        "payload": 96,
+        "codec": "VP8",
+        "rate": 90000
+      },
+      {
+        "payload": 97,
+        "codec": "rtx",
+        "rate": 90000
+      }
+    ]
+
+    const videoFmtp = [
+      {
+        "payload": 96,
+        "config": "x-google-start-bitrate=1000"
+      },
+      {
+        "payload": 97,
+        "config": "apt=96"
+      }
+    ]
+
+    const videoRtcpFb = [
+      {
+        "payload": 96,
+        "type": "transport-cc",
+        "subtype": ""
+      },
+      {
+        "payload": 96,
+        "type": "ccm",
+        "subtype": "fir"
+      },
+      {
+        "payload": 96,
+        "type": "nack",
+        "subtype": ""
+      },
+      {
+        "payload": 96,
+        "type": "nack",
+        "subtype": "pli"
+      }
+    ]
+
+    const videoExt = [
+      {
+        "value": 4,
+        "uri": "urn:ietf:params:rtp-hdrext:sdes:mid"
+      },
+      {
+        "value": 5,
+        "uri": "urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"
+      },
+      {
+        "value": 6,
+        "uri": "urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id"
+      },
+      {
+        "value": 2,
+        "uri": "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
+      },
+      {
+        "value": 3,
+        "uri": "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+      },
+      {
+        "value": 8,
+        "uri": "http://tools.ietf.org/html/draft-ietf-avtext-framemarking-07"
+      },
+      {
+        "value": 13,
+        "uri": "urn:3gpp:video-orientation"
+      },
+      {
+        "value": 14,
+        "uri": "urn:ietf:params:rtp-hdrext:toffset"
+      }
+    ]
+
+    let ext;
+    if (this.type === 'audio') {
+      template['rtp'] = audioRtp;
+      template['fmtp'] = audioFtmp;
+      template['rtcpFb'] = audioRtcpFb;
+      ext = audioExt;
+    } else if (this.type === 'video') {
+      template['rtp'] = videoRtp;
+      template['fmtp'] = videoFmtp;
+      template['rtcpFb'] = videoRtcpFb;
+      ext = videoExt;
+    }
+
     if (isActive) {
       template['direction'] = this.direction;
       template['ext'] = ext;
@@ -73,10 +170,6 @@ class TrackSdp {
       template['direction'] = 'inactive';
     }
 
-    //TODO: 
-    template['rtp'] = rtp;
-    template['ftmp'] = ftmp;
-    template['rtcpFb'] = rtcpFb;
 
     //static
     template['port'] = 7;
@@ -92,7 +185,7 @@ class TrackSdp {
 
     //dynamic
     template['type'] = this.type;
-    template['payloads'] = this.payload
+    template['payloads'] = this.payloads
 
     //instant
     template['setup'] = setup;
@@ -427,6 +520,8 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
         }
 
       } else if (sender.kind === 'video') {
+        trackSdp = new TrackSdp('vp8', '96 97', 'video', 'sendonly');
+
         if (sender.available) {
           mediaObj = Object.assign({}, JSON.parse(JSON.stringify(videoTemplate)));
           mids.push(sender.mid);
@@ -456,18 +551,15 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
       mediaObj.mid = sender.mid;
 
-      if (sender.kind === 'audio') {
-        const fingerprint = {
-          "type": remoteDTLSParameters.fingerprint.algorithm,
-          "hash": remoteDTLSParameters.fingerprint.value
-        }
-        let audioMedia = trackSdp.generate(sender.available, sender.mid, remoteDTLSParameters.setup,
-          fingerprint, remoteICEParameters.usernameFragment,
-          remoteICEParameters.password, remoteICECandidates);
-        medias.push(audioMedia);
-      } else {
-        medias.push(mediaObj);
-      }
+      const fingerprint = {
+        "type": remoteDTLSParameters.fingerprint.algorithm,
+        "hash": remoteDTLSParameters.fingerprint.value
+      };
+
+      let media = trackSdp.generate(sender.available, sender.mid, remoteDTLSParameters.setup,
+        fingerprint, remoteICEParameters.usernameFragment,
+        remoteICEParameters.password, remoteICECandidates);
+      medias.push(media);
     }
   }
 
