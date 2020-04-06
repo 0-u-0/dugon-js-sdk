@@ -120,6 +120,10 @@
         console.log(tokenId, ' out');
       };
 
+      session.onclose = _ => {
+
+      };
+
       session.onsender = sender => {
         // session.unpublish(sender);
         // if (sender.id == videoTrack.id) {
@@ -148,6 +152,10 @@
 
       session.onout = tokenId => {
         console.log(tokenId, ' out');
+      };
+
+      session.onclose = _ => {
+
       };
 
       session.ontrack = (track, receiver) => {

@@ -18,7 +18,8 @@ export default class Socket {
     this.params = params;
     this.messages = new Map();
 
-    this.onevent = null;
+    this.onnotification = null;
+    this.onclose = null;
   }
 
   getFullURL() {
@@ -48,6 +49,10 @@ export default class Socket {
         this.onnotification(event,data); 
       }
     };
+
+    this.ws.onclose = _=>{
+      this.onclose();
+    }
 
     //TODO: error
     const executor = (y, n) => {

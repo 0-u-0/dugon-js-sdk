@@ -20,6 +20,7 @@ export default class Session {
     this.onin = null;
     this.onout = null;
     this.onsender = null;
+    this.onclose = null;
   }
 
   async init(options = { pub: true, sub: true }) {
@@ -30,6 +31,10 @@ export default class Session {
       'sessionId': this.sessionId,
       'tokenId': this.tokenId
     });
+
+    this.socket.onclose = _=>{
+      this.onclose();
+    };
 
     this.socket.onnotification = (event, data) => {
       this.handleNotification(event, data);
