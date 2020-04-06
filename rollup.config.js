@@ -8,7 +8,7 @@ import commonjs from '@rollup/plugin-commonjs';//Convert CommonJS modules to ES6
 
 
 export default {
-  input: './src/interface.js',
+  input: './src/index.js',
   output: {
     file: 'dst/bundle.js',
     format: 'umd',
