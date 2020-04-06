@@ -8,6 +8,105 @@ export function randomInitId(length) {
   return parseInt(randomNum * Math.pow(10, length))
 }
 
+class TrackSdp {
+  constructor(codec, payload, type, direction) {
+    this.codec = codec;
+    this.payload = payload;
+
+    this.type = type;
+
+    this.direction = direction;
+  }
+
+  generate(isActive, mid, setup, fingerprint, iceUfrag, icePwd, candidates) {
+    const template = {};
+
+    const rtp = [
+      {
+        "payload": 111,
+        "codec": "opus",
+        "rate": 48000,
+        "encoding": 2
+      }
+    ];
+
+    const ftmp = [
+      {
+        "payload": 111,
+        "config": "stereo=1;usedtx=1"
+      }
+
+    ]
+
+    const rtcpFb = [
+      {
+        "payload": 111,
+        "type": "transport-cc",
+        "subtype": ""
+      }
+    ];
+
+    const ext = [
+      {
+        "value": 4,
+        "uri": "urn:ietf:params:rtp-hdrext:sdes:mid"
+      },
+      {
+        "value": 2,
+        "uri": "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
+      },
+      {
+        "value": 3,
+        "uri": "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+      },
+      {
+        "value": 1,
+        "uri": "urn:ietf:params:rtp-hdrext:ssrc-audio-level"
+      }
+    ];
+
+    if (isActive) {
+      template['direction'] = this.direction;
+      template['ext'] = ext;
+
+    } else {
+      template['direction'] = 'inactive';
+    }
+
+    //TODO: 
+    template['rtp'] = rtp;
+    template['ftmp'] = ftmp;
+    template['rtcpFb'] = rtcpFb;
+
+    //static
+    template['port'] = 7;
+    template['protocol'] = "UDP/TLS/RTP/SAVPF";
+    template['connection'] = {
+      "version": 4,
+      "ip": "127.0.0.1"
+    };
+    template["endOfCandidates"] = 'end-of-candidates';
+    template["iceOptions"] = "renomination";
+    template["rtcpMux"] = "rtcp-mux";
+    template["rtcpRsize"] = "rtcp-rsize";
+
+    //dynamic
+    template['type'] = this.type;
+    template['payloads'] = this.payload
+
+    //instant
+    template['setup'] = setup;
+    template['mid'] = mid;
+    template["fingerprint"] = fingerprint;
+    template["iceUfrag"] = iceUfrag;
+    template["icePwd"] = icePwd;
+    template["candidates"] = candidates;
+
+    return template;
+  }
+}
+
+
 export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
   const sdpTemplate = {
     "version": 0,
@@ -24,14 +123,13 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
       "start": 0,
       "stop": 0
     },
-    "icelite": "ice-lite",
-    "fingerprint": {},
     "msidSemantic": {
       "semantic": "WMS",
       "token": "*"
     },
-    "groups": [],
-    "media": []
+    "icelite": "ice-lite",//FIXME: 
+    "groups": [],//BUNDLE
+    "media": [] //medias
   }
 
   const audioTemplate = {
@@ -304,11 +402,6 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
   let remoteSdpObj = Object.assign(sdpTemplate);
 
-  remoteSdpObj.fingerprint = {
-    "type": remoteDTLSParameters.fingerprint.algorithm,
-    "hash": remoteDTLSParameters.fingerprint.value
-  }
-
 
   // let localSdpObj = Soup.sdpTransform.parse(localSdp);
   // console.log(localSdpObj.media.length)
@@ -319,7 +412,10 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
     if (!sender.isStopped || sender.mid === '0') {
       let mediaObj;
+
+      let trackSdp;
       if (sender.kind === 'audio') {
+        trackSdp = new TrackSdp('opus', 111, 'audio', 'sendonly');
         if (sender.available) {
           mediaObj = Object.assign({}, JSON.parse(JSON.stringify(audioTemplate)));
           mids.push(sender.mid);
@@ -346,6 +442,10 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
 
       mediaObj.setup = remoteDTLSParameters.setup;
+      mediaObj.fingerprint = {
+        "type": remoteDTLSParameters.fingerprint.algorithm,
+        "hash": remoteDTLSParameters.fingerprint.value
+      }
 
       mediaObj.iceUfrag = remoteICEParameters.usernameFragment;
       mediaObj.icePwd = remoteICEParameters.password;
@@ -356,8 +456,18 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
 
       mediaObj.mid = sender.mid;
 
-      // console.log(mediaObj.mid);
-      medias.push(mediaObj);
+      if (sender.kind === 'audio') {
+        const fingerprint = {
+          "type": remoteDTLSParameters.fingerprint.algorithm,
+          "hash": remoteDTLSParameters.fingerprint.value
+        }
+        let audioMedia = trackSdp.generate(sender.available, sender.mid, remoteDTLSParameters.setup,
+          fingerprint, remoteICEParameters.usernameFragment,
+          remoteICEParameters.password, remoteICECandidates);
+        medias.push(audioMedia);
+      } else {
+        medias.push(mediaObj);
+      }
     }
   }
 
