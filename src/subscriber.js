@@ -301,8 +301,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       media.icePwd = remoteICEParameters.password;
 
       for (let i in remoteICECandidates) {
-        let candidate = remoteICECandidates[i];
-        media.candidates.push(Object.assign(candidate, { component: 1, transport: candidate.protocol }))
+        media.candidates.push(remoteICECandidates[i])
       }
 
       media.ssrcs = [
@@ -329,8 +328,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       media.icePwd = remoteICEParameters.password;
 
       for (let i in remoteICECandidates) {
-        let candidate = remoteICECandidates[i];
-        media.candidates.push(Object.assign(candidate, { component: 1, transport: candidate.protocol }))
+        media.candidates.push(remoteICECandidates[i])
       }
 
       media.ssrcs = [
@@ -425,19 +423,8 @@ export default class Subscriber extends Transport {
       //dtls
       let answerSdpObj = sdpTransform.parse(answer.sdp);
       let dtls = getDtls(answerSdpObj);
-      const dtlsParameters =
-      {
-        role: 'client',
-        fingerprints:
-          [
-            {
-              algorithm: dtls.type,
-              value: dtls.hash
-            }
-          ]
-      };
 
-      this.ondtls(dtlsParameters);
+      this.ondtls(dtls);
     }
 
   }

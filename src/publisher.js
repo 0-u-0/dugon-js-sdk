@@ -54,19 +54,7 @@ export default class Publisher extends Transport {
     if (false === this.isGotDtls) {
       this.isGotDtls = true;
 
-      const dtls = getDtls(localSdpObj);
-
-      this.localDTLSParameters =
-      {
-        role: 'client',
-        fingerprints:
-          [
-            {
-              algorithm: dtls.type,
-              value: dtls.hash
-            }
-          ]
-      };
+      this.localDTLSParameters = getDtls(localSdpObj);
 
       this.ondtls(this.localDTLSParameters);
 

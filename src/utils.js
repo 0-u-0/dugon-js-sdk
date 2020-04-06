@@ -345,18 +345,13 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
       }
 
 
-      if (remoteDTLSParameters.role === 'server') {
-        mediaObj.setup = 'passive'
-      } else if (remoteDTLSParameters.role === 'client') {
-        mediaObj.setup = 'active'
-      }
+      mediaObj.setup = remoteDTLSParameters.setup;
 
       mediaObj.iceUfrag = remoteICEParameters.usernameFragment;
       mediaObj.icePwd = remoteICEParameters.password;
 
       for (let i in remoteICECandidates) {
-        let candidate = remoteICECandidates[i];
-        mediaObj.candidates.push(Object.assign(candidate, { component: 1, transport: candidate.protocol }))
+        mediaObj.candidates.push(remoteICECandidates[i])
       }
 
       mediaObj.mid = sender.mid;
@@ -387,11 +382,21 @@ export function remoteSdpGen(senders, remoteICECandidates, remoteICEParameters, 
   return remoteSdp;
 }
 
+//TODO: get setup
 export function getDtls(localSdpObj) {
   // console.log(JSON.stringify(localSdpObj));
   for (let media of localSdpObj.media) {
     if (media.fingerprint) {
-      return media.fingerprint
+      const dtlsParameters =
+      {
+        setup: 'active',
+        fingerprint: {
+          algorithm: media.fingerprint.type,
+          value: media.fingerprint.hash
+        }
+      };
+
+      return dtlsParameters
     }
   }
 }
@@ -614,6 +619,5 @@ export function getSenderData(sender) {
       "rtpParameters": sendingRtpParameters,
     }
   }
-  producingData.localId = sender.id;
   return producingData;
 }

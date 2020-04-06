@@ -32,7 +32,7 @@ export default class Session {
       'tokenId': this.tokenId
     });
 
-    this.socket.onclose = _=>{
+    this.socket.onclose = _ => {
       this.onclose();
     };
 
@@ -93,7 +93,7 @@ export default class Session {
             ...producingParameters
           }
         })
-        const { localId, senderId } = data;
+        const { senderId } = data;
         sender.senderId = senderId;
         this.onsender(sender);
 
@@ -134,8 +134,10 @@ export default class Session {
 
   }
 
-  //create transport and publish tracks
-  async publish(track) {
+  //TODO: add codec , simulcast config
+  async publish(track, options = {
+    codec: 'vp8', svc: false
+  }) {
     if (this.publisher.state >= 2) {
       console.log('pub send');
       this.publisher.send(track);
