@@ -296,7 +296,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       }
 
       media.mid = String(receiver.mid);
-      media.msid = `${receiver.receiverId} ${receiver.rtpParameters.rtcp.cname}`
+      media.msid = `${receiver.rtpParameters.rtcp.cname} ${receiver.receiverId}`
       media.iceUfrag = remoteICEParameters.usernameFragment;
       media.icePwd = remoteICEParameters.password;
 
@@ -323,7 +323,7 @@ function remoteSdpGenerator(receivers, remoteICECandidates, remoteICEParameters,
       }
       console.log(receiver.mid);
       media.mid = String(receiver.mid);
-      media.msid = `${receiver.receiverId} ${receiver.rtpParameters.rtcp.cname}`
+      media.msid = `${receiver.rtpParameters.rtcp.cname} ${receiver.receiverId}`
       media.iceUfrag = remoteICEParameters.usernameFragment;
       media.icePwd = remoteICEParameters.password;
 
