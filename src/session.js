@@ -186,7 +186,9 @@ export default class Session {
       case 'leave': {
         let { tokenId } = data;
         //TODO: release all receiver
-        this.subscriber.removeReceiverByTokenId(tokenId);
+        if(this.subscriber){
+          this.subscriber.removeReceiverByTokenId(tokenId);
+        }
         this.onout(tokenId);
         break;
       };

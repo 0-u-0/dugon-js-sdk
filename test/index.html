@@ -1,5 +1,5 @@
 <body>
-  <script src="../dst/bundle.js"></script>
+  <script src="../dst/dugon.js"></script>
   <script>
     const urlObject = new URL(document.location.href);
     const t = urlObject.searchParams.get("type");
@@ -134,7 +134,7 @@
       await session.init({ pub: true, sub: false });
 
       session.publish(audioTrack);
-      // session.publish(videoTrack);
+      session.publish(videoTrack);
       // session.publish(cVideoTrack);
       // session.publish(svideoTrack);
     }
