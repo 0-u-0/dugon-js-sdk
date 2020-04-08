@@ -97,8 +97,8 @@
       // const [svideoTrack] = shareStream.getVideoTracks();
 
       //canvas
-      // const canvas = initCanvas();
-      // const [cVideoTrack] = canvas.captureStream(30).getVideoTracks();
+      const canvas = initCanvas();
+      const [cVideoTrack] = canvas.captureStream(30).getVideoTracks();
 
       //mic, cam
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -108,11 +108,13 @@
       audioTrack.stream = stream;
       videoTrack.stream = stream;
 
-      session = new Dugon.Session(sessionId, tokenId, {
-        url: signalServer
+      session = new Dugon.Session(signalServer, sessionId, tokenId, {
+        metadata: {
+          username: 'pub'
+        }
       });
 
-      session.onin = tokenId => {
+      session.onin = (tokenId, metadata) => {
         console.log(tokenId, ' in');
       };
 
@@ -141,9 +143,7 @@
 
     async function sub() {
       //session
-      session = new Dugon.Session(sessionId, tokenId, {
-        url: signalServer
-      });
+      session = new Dugon.Session(signalServer, sessionId, tokenId);
 
       session.onin = tokenId => {
         console.log(tokenId, ' in');

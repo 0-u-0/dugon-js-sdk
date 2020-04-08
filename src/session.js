@@ -4,12 +4,13 @@ import Subscriber from './subscriber';
 import Transport from './transport';
 
 export default class Session {
-  constructor(sessionId, tokenId, options = { url: '' }) {
+  constructor(url, sessionId, tokenId, options = { metadata: {} }) {
+    this.url = url;
     this.sessionId = sessionId;
     this.tokenId = tokenId;
 
-    const { url } = options;
-    this.url = url;
+    const { metadata } = options;
+    this.metadata = metadata;
 
     this.socket = null;
 
@@ -29,7 +30,8 @@ export default class Session {
 
     this.socket = new Socket(this.url, {
       'sessionId': this.sessionId,
-      'tokenId': this.tokenId
+      'tokenId': this.tokenId,
+      'metadata': this.metadata,
     });
 
     this.socket.onclose = _ => {
@@ -179,14 +181,14 @@ export default class Session {
     console.log('notification: ', event, data);
     switch (event) {
       case 'join': {
-        let { tokenId } = data;
-        this.onin(tokenId);
+        let { tokenId, metadata } = data;
+        this.onin(tokenId, metadata);
         break;
       };
       case 'leave': {
         let { tokenId } = data;
         //TODO: release all receiver
-        if(this.subscriber){
+        if (this.subscriber) {
           this.subscriber.removeReceiverByTokenId(tokenId);
         }
         this.onout(tokenId);

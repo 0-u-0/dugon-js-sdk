@@ -24,9 +24,8 @@ export default class Socket {
 
   getFullURL() {
     let urlObj = new URL(this.url);
-    Object.entries(this.params).forEach(([key, param]) => {
-      urlObj.searchParams.set(key, param);
-    });
+    let encoded = btoa(JSON.stringify(this.params));
+    urlObj.searchParams.set('params', encoded);
     return urlObj.toString();
   }
 
@@ -45,12 +44,12 @@ export default class Socket {
           packet.resolve(params);
         }
       } else if (method === 'notification') {
-        let {event, data} = params;
-        this.onnotification(event,data); 
+        let { event, data } = params;
+        this.onnotification(event, data);
       }
     };
 
-    this.ws.onclose = _=>{
+    this.ws.onclose = _ => {
       this.onclose();
     }
 
