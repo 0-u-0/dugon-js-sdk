@@ -116,6 +116,7 @@
 
       session.onin = (tokenId, metadata) => {
         console.log(tokenId, ' in');
+        console.log(metadata);
       };
 
       session.onout = tokenId => {
@@ -143,7 +144,9 @@
 
     async function sub() {
       //session
-      session = new Dugon.Session(signalServer, sessionId, tokenId);
+      session = new Dugon.Session(signalServer, sessionId, tokenId,{
+        metadata:'sub'
+      });
 
       session.onin = tokenId => {
         console.log(tokenId, ' in');

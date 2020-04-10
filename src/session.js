@@ -167,8 +167,13 @@ export default class Session {
     }
   }
 
-  async pause() {
-
+  async pause(senderId) {
+    let transportId = null;
+    if(this.subscriber.receivers.get(senderId)){
+      transportId = this.subscriber.transportId;
+    }else{
+      if()
+    }
   }
 
   async resume() {
