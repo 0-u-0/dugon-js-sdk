@@ -128,6 +128,7 @@
       };
 
       session.onsender = sender => {
+        console.log(sender.senderId);
         // session.unpublish(sender);
         // if (sender.id == videoTrack.id) {
         //   session.unpublish(sender);
@@ -167,7 +168,7 @@
         stream.addTrack(track);
 
         const newVideo = document.createElement('video');
-        newVideo.id = `video-${receiver.producerId}`;
+        newVideo.id = `video-${receiver.senderId}`;
         newVideo.style.width = "300px";
         newVideo.style.width = "300px";
         newVideo.autoplay = true;
@@ -179,11 +180,12 @@
       }
 
       session.onreceiver = (receiver, tokenId, producerId, metadata) => {
-        session.subscribe(receiver);
+        session.subscribe(receiver.senderId);
       };
 
       session.onunreceiver = (receiver) => {
-        document.querySelector(`#video-${receiver.producerId}`).remove();
+        console.log('onunreceiver',receiver);
+        document.querySelector(`#video-${receiver.senderId}`).remove();
       };
 
       await session.init({ pub: false, sub: true });

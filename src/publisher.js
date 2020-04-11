@@ -1,6 +1,6 @@
 import sdpTransform from 'sdp-transform';
 
-import { remoteSdpGen, getDtls, getSenderData } from './utils';
+import { pubRemoteSdpGen, getDtls, getSenderData } from './utils';
 import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
@@ -78,7 +78,7 @@ export default class Publisher extends Transport {
 
     this.getLocalSdpData(sender, localSdp);
 
-    let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
+    let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
 
     await this.pc.setRemoteDescription(remoteSdp);
 
@@ -93,23 +93,24 @@ export default class Publisher extends Transport {
 
   }
 
-  stopSender(sender) {
-    this.asyncQueue.push(this, this._stopSender, sender);
+  stopSender(senderId) {
+    this.asyncQueue.push(this, this._stopSender, senderId);
   }
-  async _stopSender(sender) {
+  async _stopSender(senderId) {
     //TODO: check sender 
-    if (sender && sender.senderId != 0) {
-      this.pc.removeTrack(sender.transceiver.sender);
+    for (let sender of this.senders) {
+      if (sender.senderId === senderId) {
+        this.pc.removeTrack(sender.transceiver.sender);
 
-      let localSdp = await this.pc.createOffer();
+        let localSdp = await this.pc.createOffer();
 
-      let localSdpObj = sdpTransform.parse(localSdp.sdp);
-      await this.pc.setLocalDescription(localSdp);
-      let remoteSdp = remoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters, sender);
-      await this.pc.setRemoteDescription(remoteSdp);
+        let localSdpObj = sdpTransform.parse(localSdp.sdp);
+        await this.pc.setLocalDescription(localSdp);
+        let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters, sender);
+        await this.pc.setRemoteDescription(remoteSdp);
 
-      this.onsenderclosed(sender.senderId);
+        this.onsenderclosed(sender.senderId);
+      }
     }
   }
-
 }

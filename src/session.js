@@ -126,6 +126,13 @@ export default class Session {
 
       this.subscriber.onremovereceiver = receiver => {
         this.onunreceiver(receiver);
+        this.socket.request({
+          event: 'unsubscribe',
+          data: {
+            transportId: this.subscriber.id,
+            senderId: receiver.senderId,
+          }
+        })
       };
 
       this.subscriber.init();
@@ -146,25 +153,16 @@ export default class Session {
     }
   }
 
-  async unpublish(sender) {
-    this.publisher.stopSender(sender);
+  async unpublish(senderId) {
+    this.publisher.stopSender(senderId);
   }
 
-  async subscribe(receiver) {
-    this.subscriber.receive(receiver);
+  async subscribe(senderId) {
+    this.subscriber.receive(senderId);
   }
 
-  async unsubscribe(receiver) {
-    if (receiver.active) {
-      this.subscriber.removeReceiver(receiver);
-      await this.socket.request({
-        event: 'unsubscribe',
-        data: {
-          transportId: this.subscriber.id,
-          senderId: receiver.senderId,
-        }
-      })
-    }
+  async unsubscribe(senderId) {
+    this.subscriber.removeReceiver(senderId);
   }
 
   async pause(senderId) {
@@ -172,7 +170,7 @@ export default class Session {
     if(this.subscriber.receivers.get(senderId)){
       transportId = this.subscriber.transportId;
     }else{
-      if()
+
     }
   }
 
@@ -207,11 +205,7 @@ export default class Session {
       };
       case 'unpublish': {
         let { senderId, tokenId } = data;
-        let receiver = this.subscriber.receivers.get(senderId);
-
-        if (receiver.active) {
-          this.subscriber.removeReceiver(receiver);
-        }
+        this.subscriber.removeReceiver(senderId);
 
         break;
       }
