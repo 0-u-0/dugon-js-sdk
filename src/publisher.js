@@ -41,6 +41,15 @@ export default class Publisher extends Transport {
     }
   }
 
+  checkSender(senderId){
+    for(let sender of this.senders){
+      if( (senderId === sender.senderId) && sender.available){
+        return sender
+      }
+    }
+    return null;
+  }
+
   getLocalSdpData(sender, localSdp) {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 

@@ -167,15 +167,48 @@ export default class Session {
 
   async pause(senderId) {
     let transportId = null;
-    if(this.subscriber.receivers.get(senderId)){
-      transportId = this.subscriber.transportId;
-    }else{
+    let role = null;
+    if (this.subscriber && this.subscriber.receivers.get(senderId)) {
+      transportId = this.subscriber.id;
+      role = 'sub';
+    } else if (this.publisher && this.publisher.checkSender(senderId)) {
+      transportId = this.publisher.id;
+      role = 'pub';
+    }
 
+    if (transportId) {
+      this.socket.request({
+        event: 'pause',
+        data: {
+          transportId,
+          senderId,
+          role
+        }
+      })
     }
   }
 
-  async resume() {
+  async resume(senderId) {
+    let transportId = null;
+    let role = null;
+    if (this.subscriber && this.subscriber.receivers.get(senderId)) {
+      transportId = this.subscriber.id;
+      role = 'sub';
+    } else if (this.publisher && this.publisher.checkSender(senderId)) {
+      transportId = this.publisher.id;
+      role = 'pub';
+    }
 
+    if (transportId) {
+      this.socket.request({
+        event: 'resume',
+        data: {
+          transportId,
+          senderId,
+          role
+        }
+      })
+    }
   }
 
 
@@ -198,15 +231,36 @@ export default class Session {
         break;
       };
       case 'publish': {
-        let { senderId, tokenId, metadata, kind, rtpParameters, receiverId } = data;
-        let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata);
-        this.onreceiver(receiver, tokenId, senderId, metadata);
+        let { senderId, tokenId, metadata, kind, rtpParameters, receiverId, senderPaused } = data;
+        if (this.subscriber) {
+          let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata);
+          this.onreceiver(receiver, tokenId, senderId, metadata);
+        }
+
         break;
       };
       case 'unpublish': {
         let { senderId, tokenId } = data;
-        this.subscriber.removeReceiver(senderId);
+        if(this.subscriber){
+          this.subscriber.removeReceiver(senderId);
+        }
 
+        break;
+      }
+      case 'pause': {
+        let { senderId } = data;
+        if(this.subscriber){
+          this.subscriber.removeReceiver(senderId);
+        }
+
+        break;
+      }
+      case 'resume': {
+        let { senderId } = data;
+        if(this.subscriber){
+          this.subscriber.removeReceiver(senderId);
+        }
+        
         break;
       }
       default: {

@@ -34,8 +34,8 @@ export default class Subscriber extends Transport {
     }
   }
 
-  addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata) {
-    const receiver = new Receiver(senderId, tokenId, receiverId, kind, rtpParameters, metadata);
+  addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata) {
+    const receiver = new Receiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata);
     receiver.mid = String(this.currentMid++);
     this.receivers.set(senderId, receiver);
     return receiver;
