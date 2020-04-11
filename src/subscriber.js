@@ -68,8 +68,7 @@ export default class Subscriber extends Transport {
     receiver.transceiver = transceiver;
     this.ontrack(transceiver.receiver.track, receiver);
 
-    //TODO: consumer resume
-
+    //TODO: receiver resume
     if (!this.isGotDtls) {
       this.isGotDtls = true;
       //dtls

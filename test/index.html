@@ -179,7 +179,7 @@
 
       }
 
-      session.onreceiver = (receiver, tokenId, producerId, metadata) => {
+      session.onreceiver = (receiver, tokenId, senderId, metadata) => {
         session.subscribe(receiver.senderId);
       };
 
