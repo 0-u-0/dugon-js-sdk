@@ -44,7 +44,7 @@ export default class Subscriber extends Transport {
   receive(senderId) {
     const receiver = this.receivers.get(senderId);
     if (receiver) {
-      this.asyncQueue.push(this, this._receive, receiver);
+      this.asyncQueue.push(this, this._receive, [receiver]);
     }
   }
 
@@ -83,7 +83,7 @@ export default class Subscriber extends Transport {
   removeReceiver(senderId) {
     const receiver = this.receivers.get(senderId);
     if (receiver && receiver.active) {
-      this.asyncQueue.push(this, this._removeReceiver, receiver);
+      this.asyncQueue.push(this, this._removeReceiver, [receiver]);
     }
   }
 

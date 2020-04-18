@@ -4,6 +4,8 @@ export default class Sender {
     this.transceiver = transceiver;
 
     this.senderId = 0;
+    
+    this.media = null;
   }
 
   get id() {

@@ -14,7 +14,7 @@ export default class AsyncQueue {
   }
 
   executeTask(execObj, task, parameter) {
-    task.call(execObj, parameter).then(() => {
+    task.call(execObj, ...parameter).then(() => {
       if (this.queue.length > 0) {
         let [nextExecObj, nextTask, nextParameter] = this.queue.shift();
         this.executeTask(nextExecObj, nextTask, nextParameter);

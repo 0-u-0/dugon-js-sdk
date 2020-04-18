@@ -5,6 +5,7 @@ import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
 import Transport from './transport';
+import Media from './media';
 
 export default class Publisher extends Transport {
   constructor(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
@@ -41,24 +42,24 @@ export default class Publisher extends Transport {
     }
   }
 
-  checkSender(senderId){
-    for(let sender of this.senders){
-      if( (senderId === sender.senderId) && sender.available){
+  checkSender(senderId) {
+    for (let sender of this.senders) {
+      if ((senderId === sender.senderId) && sender.available) {
         return sender
       }
     }
     return null;
   }
 
-  getLocalSdpData(sender, localSdp) {
+  getLocalSdpData(sender, localSdp, codec) {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 
-    for (let m of localSdpObj.media) {
-      if (m.mid == sender.mid) {
-        sender.ssrcs = m.ssrcs;
-        sender.ssrcGroups = m.ssrcGroups;
-      }
+    //use opus as audio codec
+    if (sender.kind == 'audio') {
+      codec = 'opus'
     }
+
+    sender.media = Media.createMedia(sender.mid, codec, localSdpObj);
 
     if (false === this.isGotDtls) {
       this.isGotDtls = true;
@@ -66,18 +67,16 @@ export default class Publisher extends Transport {
       this.localDTLSParameters = getDtls(localSdpObj);
 
       this.ondtls(this.localDTLSParameters);
-
     }
   }
 
-  send(track) {
-    this.asyncQueue.push(this, this._send, track);
+  send() {
+    this.asyncQueue.push(this, this._send, [...arguments]);
   }
 
-  async _send(track) {
+  async _send(track, codec) {
     const transceiver = await this.pc.addTransceiver(track, {
       direction: 'sendonly',
-      //TODO: streams: [t.stream]
     });
     const sender = new Sender(track, transceiver);
     this.senders.push(sender);
@@ -85,15 +84,17 @@ export default class Publisher extends Transport {
     const localSdp = await this.pc.createOffer();
     await this.pc.setLocalDescription(localSdp);//mid after setLocalSdp
 
-    this.getLocalSdpData(sender, localSdp);
+    this.getLocalSdpData(sender, localSdp, codec);
 
     let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
 
     await this.pc.setRemoteDescription(remoteSdp);
 
-
-    const producingData = getSenderData(sender);
+    console.log(sender.media);
+    const producingData = sender.media.toRtpParameters();
+    console.log(producingData);
     if (producingData) {
+      //TODO: handle metadata
       producingData.metadata = {
         test: 'test'
       };
@@ -103,8 +104,9 @@ export default class Publisher extends Transport {
   }
 
   stopSender(senderId) {
-    this.asyncQueue.push(this, this._stopSender, senderId);
+    this.asyncQueue.push(this, this._stopSender, [senderId]);
   }
+
   async _stopSender(senderId) {
     //TODO: check sender 
     for (let sender of this.senders) {

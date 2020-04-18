@@ -3,6 +3,8 @@ import Publisher from './publisher';
 import Subscriber from './subscriber';
 import Transport from './transport';
 
+const DEFAULT_CODEC = 'VP8'
+
 export default class Session {
   constructor(url, sessionId, tokenId, options = { metadata: {} }) {
     this.url = url;
@@ -144,12 +146,14 @@ export default class Session {
   }
 
   //TODO: add codec , simulcast config
+  //codec , VP8,VP9, H264-BASELINE, H264-CONSTRAINED-BASELINE, H264-MAIN, H264-HIGH
   async publish(track, options = {
-    codec: 'vp8', svc: false
+    codec: DEFAULT_CODEC, svc: false
   }) {
+    //TODO: fix state
     if (this.publisher.state >= 2) {
-      console.log('pub send');
-      this.publisher.send(track);
+      const { codec = DEFAULT_CODEC, svc = false} = options;
+      this.publisher.send(track, codec);
     }
   }
 
@@ -241,7 +245,7 @@ export default class Session {
       };
       case 'unpublish': {
         let { senderId, tokenId } = data;
-        if(this.subscriber){
+        if (this.subscriber) {
           this.subscriber.removeReceiver(senderId);
         }
 
@@ -249,7 +253,7 @@ export default class Session {
       }
       case 'pause': {
         let { senderId } = data;
-        if(this.subscriber){
+        if (this.subscriber) {
           this.subscriber.removeReceiver(senderId);
         }
 
@@ -257,10 +261,10 @@ export default class Session {
       }
       case 'resume': {
         let { senderId } = data;
-        if(this.subscriber){
+        if (this.subscriber) {
           this.subscriber.removeReceiver(senderId);
         }
-        
+
         break;
       }
       default: {
