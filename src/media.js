@@ -12,7 +12,9 @@ class RTX {
   }
 }
 export default class Media {
-  static createMedia(mid, codec, sdp) {
+  static createMedia(mid, direction, codecCap, sdp) {
+    //codecCap, ext should be merged
+
     let media;
     for (let m of sdp.media) {
       if (m.mid == mid) {
@@ -21,33 +23,41 @@ export default class Media {
       }
     }
     if (media) {
-      let payload, rate, channels,
+      let codec, payload, rate, channels,
         fmtp, rtx, cname;
 
       let rtcpMux = false, rtcpRsize = false;
 
       let rtcpFb = [];
+      let extension = [];
 
       //TODO: h264
       // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
-      if (codec.slice(0, 4) == 'H264') {
-        let profile;
-        if (codec.slice(5) == 'BASELINE') {
-          profile = H264_BASELINE;
-        } else if (codec.slice(5) == 'CONSTRAINED-BASELINE') {
-          profile = H264_CONSTRAINED_BASELINE;
-        } else if (codec.slice(5) == 'MAIN') {
-          profile = H264_MAIN;
-        } else if (codec.slice(5) == 'HIGH') {
-          profile = H264_HIGH;
-        }
-
+      if (codecCap.codecName.slice(0, 4) == 'H264') {
+        // let profile;
+        // if (codecCap.codecName.slice(5) == 'BASELINE') {
+        //   profile = H264_BASELINE;
+        // } else if (codecCap.codecName.slice(5) == 'CONSTRAINED-BASELINE') {
+        //   profile = H264_CONSTRAINED_BASELINE;
+        // } else if (codecCap.codecName.slice(5) == 'MAIN') {
+        //   profile = H264_MAIN;
+        // } else if (codecCap.codecName.slice(5) == 'HIGH') {
+        //   profile = H264_HIGH;
+        // }
         codec = 'H264';
+
         for (let f of media.fmtp) {
-          if (f.config.includes(profile)) {
+          let matched = true;
+          for (let p of codecCap.parameters) {
+            if (!f.config.includes(p)) {
+              matched = false;
+            }
+          }
+          if (matched) {
             payload = f.payload;
             fmtp = f.config;
           }
+
           if (f.config == `apt=${payload}`) {
             rtx = f.payload;
           }
@@ -61,6 +71,8 @@ export default class Media {
         }
 
       } else {
+        codec = codecCap.codecName;
+
         for (let rtp of media.rtp) {
           if (rtp.codec == codec) {
             payload = rtp.payload;
@@ -88,11 +100,30 @@ export default class Media {
 
       for (let tf of media.rtcpFb) {
         if (tf.payload == payload) {
+          let parameter = tf.parameter ? tf.parameter : ""
           rtcpFb.push({
             type: tf.type,
-            parameter: tf.subtype
+            parameter
           });
 
+        }
+      }
+
+      //codecCap, ext should be merged
+      let avaiableExt = codecCap.ext.filter(ext => ext[direction]);
+
+      for (let e of media.ext) {
+        for (let ae of avaiableExt) {
+          if (e.uri == ae.uri) {
+            let newExt = {
+              'id': e.value,
+              'uri': e.uri,
+              'encrypt': false,
+              'parameters': {}
+            }
+            extension.push(newExt);
+            break;
+          }
         }
       }
 
@@ -104,7 +135,7 @@ export default class Media {
       }
 
       return new Media(media.type, codec, payload, rate, mid, cname, channels,
-        fmtp, media.ssrcs, media.ssrcGroups, rtcpFb, media.ext, rtx, rtcpMux, rtcpRsize);
+        fmtp, media.ssrcs, media.ssrcGroups, rtcpFb, extension, rtx, rtcpMux, rtcpRsize);
 
     }
 
@@ -133,6 +164,8 @@ export default class Media {
         np[key] = value
       }
       this.parameters = np;
+    } else {
+      this.parameters = {};
     }
     this.payload = payload;
     this.ssrc = ssrc;
@@ -153,14 +186,7 @@ export default class Media {
 
   toRtpParameters() {
 
-    const headerExtensions = this.extension.map(e => {
-      return {
-        'id': e.value,
-        'uri': e.uri,
-        'encrypt': false,
-        'parameters': {}
-      }
-    });
+    const headerExtensions = this.extension;
     const rtcp = {
       "reducedSize": this.rtcpRsize,
       "cname": this.cname
@@ -174,12 +200,7 @@ export default class Media {
         "clockRate": this.rate,
         "channels": this.channels,
         "parameters": this.parameters,
-        "rtcpFeedback": this.rtcpFb.map(r => {
-          return {
-            type: r.type,
-            parameter: this.parameter ? this.parameter : ""
-          }
-        })
+        "rtcpFeedback": this.rtcpFb
       }
     ];
 

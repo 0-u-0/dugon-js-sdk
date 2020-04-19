@@ -51,15 +51,10 @@ export default class Publisher extends Transport {
     return null;
   }
 
-  getLocalSdpData(sender, localSdp, codec) {
+  getLocalSdpData(sender, localSdp, codecCap) {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 
-    //use opus as audio codec
-    if (sender.kind == 'audio') {
-      codec = 'opus'
-    }
-
-    sender.media = Media.createMedia(sender.mid, codec, localSdpObj);
+    sender.media = Media.createMedia(sender.mid, 'recv' ,codecCap, localSdpObj);
 
     if (false === this.isGotDtls) {
       this.isGotDtls = true;
@@ -74,7 +69,7 @@ export default class Publisher extends Transport {
     this.asyncQueue.push(this, this._send, [...arguments]);
   }
 
-  async _send(track, codec) {
+  async _send(track, codecCap) {
     const transceiver = await this.pc.addTransceiver(track, {
       direction: 'sendonly',
     });
@@ -84,7 +79,7 @@ export default class Publisher extends Transport {
     const localSdp = await this.pc.createOffer();
     await this.pc.setLocalDescription(localSdp);//mid after setLocalSdp
 
-    this.getLocalSdpData(sender, localSdp, codec);
+    this.getLocalSdpData(sender, localSdp, codecCap);
 
     let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
 

@@ -3,7 +3,8 @@ import Publisher from './publisher';
 import Subscriber from './subscriber';
 import Transport from './transport';
 
-const DEFAULT_CODEC = 'VP8'
+const DEFAULT_VIDEO_CODEC = 'VP8'
+const DEFAULT_AUDIO_CODEC = 'opus'
 
 export default class Session {
   constructor(url, sessionId, tokenId, options = { metadata: {} }) {
@@ -19,6 +20,7 @@ export default class Session {
     this.publisher = null;
     this.subscriber = null;
 
+    this.codecs = null;
     //event
     this.onin = null;
     this.onout = null;
@@ -59,6 +61,7 @@ export default class Session {
     if (sub) {
       this.initTransport('sub', transportParameters.sub);
     }
+    this.codecs = transportParameters.codecs;
   }
 
   initTransport(role, transportParameters) {
@@ -145,15 +148,34 @@ export default class Session {
 
   }
 
-  //TODO: add codec , simulcast config
-  //codec , VP8,VP9, H264-BASELINE, H264-CONSTRAINED-BASELINE, H264-MAIN, H264-HIGH
+  //TODO: simulcast config
+  //codec , opus, VP8,VP9, H264-BASELINE, H264-CONSTRAINED-BASELINE, H264-MAIN, H264-HIGH
   async publish(track, options = {
-    codec: DEFAULT_CODEC, svc: false
+    svc: false
   }) {
     //TODO: fix state
     if (this.publisher.state >= 2) {
-      const { codec = DEFAULT_CODEC, svc = false} = options;
-      this.publisher.send(track, codec);
+      let { codec , svc = false} = options;
+      if(!codec){
+        if(track.kind == 'audio'){
+          codec = DEFAULT_AUDIO_CODEC;
+        }else if(track.kind == 'video'){
+          codec = DEFAULT_VIDEO_CODEC;
+        }
+      }
+
+      let codecCap = null;
+      for(let c of this.codecs){
+        if(c.codecName === codec ){
+          codecCap = c;
+        }
+      }
+
+      if(codecCap){
+        this.publisher.send(track, codecCap);
+      }else{
+        //TODO: 
+      }
     }
   }
 
