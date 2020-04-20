@@ -1,6 +1,6 @@
 import sdpTransform from 'sdp-transform';
 
-import { pubRemoteSdpGen, getDtls } from './utils';
+import { getDtls } from './utils';
 import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
@@ -82,7 +82,7 @@ export default class Publisher extends Transport {
 
     this.getLocalSdpData(sender, localSdp, codecCap);
 
-    let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters);
+    let remoteSdp = this.generateSdp();
 
     await this.pc.setRemoteDescription(remoteSdp);
 

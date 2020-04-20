@@ -28,6 +28,7 @@ export default class Media {
 
       let rtcpFb = [];
       let extension = [];
+      let ssrc;
 
       //TODO: h264
       // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
@@ -47,7 +48,7 @@ export default class Media {
           }
 
           if (f.config == `apt=${payload}`) {
-            rtx = f.payload;
+            rtx = { payload: f.payload };
           }
         }
 
@@ -74,7 +75,7 @@ export default class Media {
             fmtp = f.config;
           }
           if (f.config == `apt=${payload}`) {
-            rtx = f.payload;
+            rtx = { payload: f.payload };
           }
         }
       }
@@ -123,9 +124,35 @@ export default class Media {
         }
       }
 
+      //ssrc
+      ssrc = media.ssrcs[0].id;
+      if (media.ssrcGroups) {
+        for (let sg of media.ssrcGroups) {
+          if (sg.semantics == 'FID') {
+            rtx.ssrc = parseInt(sg.ssrcs.split(' ')[1]);
+            break;
+          }
+        }
+      }
+
+      let parameters = {};
+      if (fmtp) {
+        let p1 = fmtp.split(';')
+        for (let l of p1) {
+          let r = l.split('=');
+          let key = r[0];
+          let value = r[1];
+          if (!isNaN(r[1])) {
+            value = parseInt(value)
+          }
+          parameters[key] = value
+        }
+      } 
+
+
 
       return new Media(media.type, direction, codec, payload, rate, mid, cname, channels,
-        fmtp, media.ssrcs, media.ssrcGroups, rtcpFb, extension, rtx, media.protocol);
+        parameters, ssrc, rtcpFb, extension, rtx, media.protocol);
 
     }
 
@@ -134,7 +161,7 @@ export default class Media {
 
   //TODO: dtx
   constructor(type, direction, codec, payload, rate, mid, cname,
-    channels = 1, parameters, ssrc, ssrcGroups,
+    channels = 1, parameters, ssrc,
     rtcpFb, extension, rtx, protocol) {
     this.type = type;
     this.direction = direction;
@@ -142,25 +169,9 @@ export default class Media {
     this.rate = rate;
     this.channels = channels;
 
-    if (parameters) {
-      let p1 = parameters.split(';')
-      let np = {};
-      for (let l of p1) {
-        let r = l.split('=');
-        let key = r[0];
-        let value = r[1];
-        if (!isNaN(r[1])) {
-          value = parseInt(value)
-        }
-        np[key] = value
-      }
-      this.parameters = np;
-    } else {
-      this.parameters = {};
-    }
+    this.parameters = parameters;
     this.payload = payload;
     this.ssrc = ssrc;
-    this.ssrcGroups = ssrcGroups;
 
     this.rtcpFb = rtcpFb;
     this.extension = extension;
@@ -196,7 +207,7 @@ export default class Media {
 
     const encodings = [
       {
-        "ssrc": this.ssrc[0].id,
+        "ssrc": this.ssrc,
         //TODO: 
         "dtx": false
       }
@@ -205,7 +216,7 @@ export default class Media {
     if ('video' == this.type && this.rtx) {
       codecs.push({
         "mimeType": `video/rtx`,
-        "payloadType": this.rtx,
+        "payloadType": this.rtx.payload,
         "clockRate": this.rate,
         "channels": this.channels,
         "parameters": {
@@ -215,7 +226,7 @@ export default class Media {
       })
       //TODO: get id from ssrc group
       encodings[0]["rtx"] = {
-        "ssrc": this.ssrc[4].id
+        "ssrc": this.rtx.ssrc
       };
     }
 
@@ -227,7 +238,90 @@ export default class Media {
     };
   }
 
-  toSdp(iceParameters, candidates, isActive) {
+  // toSdp(iceParameters, candidates, isActive) {
+  //   let lines = [];
+  //   //var
+  //   let port = 0;
+
+  //   if(direction == 'send'){
+  //     port = 7;
+  //   }else if(direction == 'recv'){
+  //     if (isActive || this.mid == '0') {
+  //       port = 7;
+  //     }
+  //   }
+ 
+
+  //   let direction = `${this.direction}only`;
+  //   if (!isActive) {
+  //     direction = 'inactive';
+  //   }
+
+  //   let mLine = `m=${this.type} ${port} ${this.protocol} ${this.payload}`;
+  //   if (this.rtx) {
+  //     mLine = mLine + ' ' + this.rtx.payload;
+  //   }
+
+  //   //
+  //   lines.push(mLine);
+  //   lines.push(`c=IN IP4 127.0.0.1`);
+  //   if (this.channels == 1) {
+  //     lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}`);
+  //   } else {
+  //     lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}/${this.channels}`);
+  //   }
+
+  //   if (this.rtx) {
+  //     lines.push(`a=rtpmap:${this.rtx.payload} rtx/${this.rate}`);
+  //   }
+
+  //   if (Object.keys(this.parameters).length > 0) {
+  //     lines.push(`a=fmtp:${this.payload} ${objToStr(this.parameters)}`);
+  //   }
+
+  //   if (this.rtx) {
+  //     lines.push(`a=fmtp:${this.rtx.payload} apt=${this.payload}`);
+  //   }
+
+  //   //rtcp-feedback
+  //   for (let rf of this.rtcpFb) {
+  //     let str = `${rf.type} ${rf.parameter}`.trim();
+  //     lines.push(`a=rtcp-fb:${this.payload} ${str}`);
+  //   }
+
+  //   //extension
+  //   if (isActive) {
+  //     for (let e of this.extension) {
+  //       lines.push(`a=extmap:${e.id} ${e.uri}`);
+  //     }
+  //   }
+
+  //   //TODO: SSl role
+  //   lines.push(`a=setup:active`);
+  //   lines.push(`a=mid:${this.mid}`);
+  //   lines.push(`a=${direction}`);
+
+  //   //ice 
+  //   lines.push(`a=ice-ufrag:${iceParameters.usernameFragment}`);
+  //   lines.push(`a=ice-pwd:${iceParameters.password}`);
+
+  //   //candiate
+  //   for (let c of candidates) {
+  //     lines.push(`a=candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.ip} ${c.port} typ ${c.type}`);
+  //   }
+
+  //   lines.push(`a=end-of-candidates`);
+
+  //   //TODO:
+  //   lines.push(`a=ice-options:renomination`);
+
+  //   lines.push(`a=rtcp-mux`);
+  //   lines.push(`a=rtcp-rsize`);
+
+  //   return lines.join('\r\n');
+  // }
+
+  toSdp2(iceParameters, candidates, isActive, receiverId) {
     let lines = [];
     //var
     let port = 0;
@@ -241,8 +335,8 @@ export default class Media {
     }
 
     let mLine = `m=${this.type} ${port} ${this.protocol} ${this.payload}`;
-    if(this.rtx){
-      mLine = mLine + ' ' + this.rtx;
+    if (this.rtx) {
+      mLine = mLine + ' ' + this.rtx.payload;
     }
 
     //
@@ -255,7 +349,7 @@ export default class Media {
     }
 
     if (this.rtx) {
-      lines.push(`a=rtpmap:${this.rtx} rtx/${this.rate}`);
+      lines.push(`a=rtpmap:${this.rtx.payload} rtx/${this.rate}`);
     }
 
     if (Object.keys(this.parameters).length > 0) {
@@ -263,7 +357,7 @@ export default class Media {
     }
 
     if (this.rtx) {
-      lines.push(`a=fmtp:${this.rtx} apt=${this.payload}`);
+      lines.push(`a=fmtp:${this.rtx.payload} apt=${this.payload}`);
     }
 
     //rtcp-feedback
@@ -280,8 +374,20 @@ export default class Media {
     }
 
     //TODO: SSl role
-    lines.push(`a=setup:passive`);
+    if(this.direction == 'send'){
+      lines.push(`a=setup:actpass`);
+    }else if(this.direction == 'recv'){
+      lines.push(`a=setup:passive`);
+    }
+
     lines.push(`a=mid:${this.mid}`);
+
+    //TODO: msid
+    //send only
+    if (this.direction === 'send') {
+      lines.push(`a=msid:${this.cname} ${receiverId}`);
+    }
+
     lines.push(`a=${direction}`);
 
     //ice 
@@ -298,12 +404,23 @@ export default class Media {
     //TODO:
     lines.push(`a=ice-options:renomination`);
 
+    if (this.direction === 'send') {
+      if(this.rtx){
+        lines.push(`a=ssrc-group:FID ${this.ssrc} ${this.rtx.ssrc}`);
+      }
+
+      lines.push(`a=ssrc:${this.ssrc} cname:${this.cname}`);
+      if (this.rtx) {
+        lines.push(`a=ssrc:${this.rtx.ssrc} cname:${this.cname}`);
+        lines.push(`a=ssrc:${this.rtx.ssrc} cname:${this.cname}`);
+      }
+    }
+
     lines.push(`a=rtcp-mux`);
     lines.push(`a=rtcp-rsize`);
 
     return lines.join('\r\n');
   }
-
 
 
 }

@@ -7,8 +7,6 @@ import Receiver from './receiver';
 
 import { getDtls } from './utils';
 
-import { subRemoteSdpGen } from './utils';
-
 
 export default class Subscriber extends Transport {
   constructor(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
@@ -34,9 +32,9 @@ export default class Subscriber extends Transport {
     }
   }
 
-  addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata) {
-    const receiver = new Receiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata);
-    receiver.mid = String(this.currentMid++);
+  addReceiver(senderId, tokenId, receiverId, parameters, metadata) {
+    const receiver = new Receiver(String(this.currentMid++), senderId, tokenId, receiverId, parameters, metadata);
+
     this.receivers.set(senderId, receiver);
     return receiver;
   }
@@ -53,13 +51,10 @@ export default class Subscriber extends Transport {
       receiver.active = true;
     }
 
-    let remoteSdp = subRemoteSdpGen(this.receivers, this.remoteICECandidates,
-      this.remoteICEParameters, this.remoteDTLSParameters);
+    let remoteSdp = this.generateSdp();
 
-    await this.pc.setRemoteDescription(new RTCSessionDescription({
-      type: 'offer',
-      sdp: remoteSdp
-    }))
+    await this.pc.setRemoteDescription(remoteSdp);
+
     let answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
@@ -90,13 +85,9 @@ export default class Subscriber extends Transport {
   async _removeReceiver(receiver) {
     receiver.active = false;
 
-    let remoteSdp = subRemoteSdpGen(this.receivers, this.remoteICECandidates,
-      this.remoteICEParameters, this.remoteDTLSParameters);
+    let remoteSdp = this.generateSdp();
 
-    await this.pc.setRemoteDescription(new RTCSessionDescription({
-      type: 'offer',
-      sdp: remoteSdp
-    }))
+    await this.pc.setRemoteDescription(remoteSdp);
     let answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
@@ -106,5 +97,35 @@ export default class Subscriber extends Transport {
   init() {
     this.pc = new RTCPeerConnection();
   }
+
+  generateSdp() {
+    const lines = [];
+    lines.push(`v=0`);
+    //TODO: use random id
+    lines.push(`o=- 10000 2 IN IP4 127.0.0.1`);
+    lines.push(`s=-`);
+    lines.push(`t=0 0`);
+    lines.push(`a=ice-lite`);
+
+    const groupLength = lines.push(`a=group:BUNDLE `);
+    lines.push(`a=msid-semantic: WMS`);
+    lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
+
+    let mids = [];
+    for (let [key, receiver] of this.receivers) {
+      //is stopped remove sdp
+      lines.push(receiver.toSdp(this.remoteICEParameters, this.remoteICECandidates));
+      mids.push(receiver.mid);
+    }
+
+    //add BUNDLE
+    lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
+
+    let sdp = lines.join('\r\n');
+    sdp = sdp + '\r\n';
+
+    return new RTCSessionDescription({ type: 'offer', sdp: sdp });
+  }
+
 }
 

@@ -257,9 +257,9 @@ export default class Session {
         break;
       };
       case 'publish': {
-        let { senderId, tokenId, metadata, kind, rtpParameters, receiverId, senderPaused } = data;
+        let { senderId, tokenId, metadata, parameters, receiverId } = data;
         if (this.subscriber) {
-          let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, kind, rtpParameters, senderPaused, metadata);
+          let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, parameters, metadata);
           this.onreceiver(receiver, tokenId, senderId, metadata);
         }
 

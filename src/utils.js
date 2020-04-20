@@ -509,7 +509,7 @@ export function subRemoteSdpGen(receivers, remoteICECandidates, remoteICEParamet
 
 
     media.mid = String(receiver.mid);
-    media.msid = `${receiver.rtpParameters.rtcp.cname} ${receiver.receiverId}`
+    media.msid = `${receiver.rtpParameters.cname} ${receiver.receiverId}`
     media.iceUfrag = remoteICEParameters.usernameFragment;
     media.icePwd = remoteICEParameters.password;
 
@@ -517,23 +517,23 @@ export function subRemoteSdpGen(receivers, remoteICECandidates, remoteICEParamet
 
     media.ssrcs = [
       {
-        "id": receiver.rtpParameters.encodings[0].ssrc,
+        "id": receiver.rtpParameters.ssrc,
         "attribute": "cname",
-        "value": receiver.rtpParameters.rtcp.cname
+        "value": receiver.rtpParameters.cname
       }
     ]
 
     if (receiver.kind === 'video') {
       media.ssrcs.push({
-        "id": receiver.rtpParameters.encodings[0].rtx.ssrc,
+        "id": receiver.rtpParameters.rtx.ssrc,
         "attribute": "cname",
-        "value": receiver.rtpParameters.rtcp.cname
+        "value": receiver.rtpParameters.cname
       })
 
       media.ssrcGroups = [
         {
           "semantics": "FID",
-          "ssrcs": `${receiver.rtpParameters.encodings[0].ssrc} ${receiver.rtpParameters.encodings[0].rtx.ssrc}`
+          "ssrcs": `${receiver.rtpParameters.ssrc} ${receiver.rtpParameters.rtx.ssrc}`
         }
       ]
     }
