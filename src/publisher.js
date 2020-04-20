@@ -124,10 +124,11 @@ export default class Publisher extends Transport {
   generateSdp() {
     const lines = [];
     lines.push(`v=0`);
+    //TODO: use random id
     lines.push(`o=- 6186703537811977017 2 IN IP4 127.0.0.1`);
     lines.push(`s=-`);
     lines.push(`t=0 0`);
-    //TODO: 
+
     const groupLength = lines.push(`a=group:BUNDLE `);
     lines.push(`a=msid-semantic: WMS`);
     lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
