@@ -29,4 +29,8 @@ export default class Sender {
     return this.transceiver.stopped;
   }
 
+  toSdp(iceParameters, candidates){
+    return this.media.toSdp(iceParameters, candidates,this.available);
+  }
+
 }

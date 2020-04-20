@@ -1,6 +1,6 @@
 import sdpTransform from 'sdp-transform';
 
-import { pubRemoteSdpGen, getDtls, getSenderData } from './utils';
+import { pubRemoteSdpGen, getDtls } from './utils';
 import AsyncQueue from './asyncQueue';
 import Sender from './sender';
 
@@ -54,7 +54,8 @@ export default class Publisher extends Transport {
   getLocalSdpData(sender, localSdp, codecCap) {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 
-    sender.media = Media.createMedia(sender.mid, 'recv' ,codecCap, localSdpObj);
+    //remote media
+    sender.media = Media.createMedia(sender.mid, 'recv', codecCap, localSdpObj);
 
     if (false === this.isGotDtls) {
       this.isGotDtls = true;
@@ -112,11 +113,42 @@ export default class Publisher extends Transport {
 
         let localSdpObj = sdpTransform.parse(localSdp.sdp);
         await this.pc.setLocalDescription(localSdp);
-        let remoteSdp = pubRemoteSdpGen(this.senders, this.remoteICECandidates, this.remoteICEParameters, this.remoteDTLSParameters, sender);
+        let remoteSdp = this.generateSdp();
         await this.pc.setRemoteDescription(remoteSdp);
 
         this.onsenderclosed(sender.senderId);
       }
     }
+  }
+
+  generateSdp() {
+    const lines = [];
+    lines.push(`v=0`);
+    lines.push(`o=- 6186703537811977017 2 IN IP4 127.0.0.1`);
+    lines.push(`s=-`);
+    lines.push(`t=0 0`);
+    //TODO: 
+    const groupLength = lines.push(`a=group:BUNDLE `);
+    lines.push(`a=msid-semantic: WMS`);
+    lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
+
+    let mids = [];
+    for (let sender of this.senders) {
+      //is stopped remove sdp
+      if (!sender.isStopped || sender.mid === '0') {
+        if (sender.available || sender.mid === '0') {
+          mids.push(sender.mid);
+        }
+        lines.push(sender.toSdp(this.remoteICEParameters, this.remoteICECandidates));
+      }
+    }
+
+    //add BUNDLE
+    lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
+
+    let sdp = lines.join('\r\n');
+    sdp = sdp + '\r\n';
+    
+    return new RTCSessionDescription({ type: 'answer', sdp: sdp });
   }
 }

@@ -4,17 +4,17 @@ const H264_CONSTRAINED_BASELINE = '42e01f'
 const H264_MAIN = '4d0032'
 const H264_HIGH = '640032'
 
-class RTX {
-  constructor(payload, rate, channels) {
-    this.payload = payload;
-    this.rate = rate;
-    this.channels = channels;
+function objToStr(obj) {
+  let arr = [];
+  for (let k in obj) {
+    arr.push(`${k}=${obj[k]}`)
   }
+  return arr.join(';')
 }
+
 export default class Media {
   static createMedia(mid, direction, codecCap, sdp) {
     //codecCap, ext should be merged
-
     let media;
     for (let m of sdp.media) {
       if (m.mid == mid) {
@@ -26,24 +26,12 @@ export default class Media {
       let codec, payload, rate, channels,
         fmtp, rtx, cname;
 
-      let rtcpMux = false, rtcpRsize = false;
-
       let rtcpFb = [];
       let extension = [];
 
       //TODO: h264
       // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
       if (codecCap.codecName.slice(0, 4) == 'H264') {
-        // let profile;
-        // if (codecCap.codecName.slice(5) == 'BASELINE') {
-        //   profile = H264_BASELINE;
-        // } else if (codecCap.codecName.slice(5) == 'CONSTRAINED-BASELINE') {
-        //   profile = H264_CONSTRAINED_BASELINE;
-        // } else if (codecCap.codecName.slice(5) == 'MAIN') {
-        //   profile = H264_MAIN;
-        // } else if (codecCap.codecName.slice(5) == 'HIGH') {
-        //   profile = H264_HIGH;
-        // }
         codec = 'H264';
 
         for (let f of media.fmtp) {
@@ -98,14 +86,22 @@ export default class Media {
         }
       }
 
+      //codecCap, rtcpFb should be merged
+      /**
+       //TODO:  use transport-cc as default , extension
+       */
       for (let tf of media.rtcpFb) {
-        if (tf.payload == payload) {
-          let parameter = tf.parameter ? tf.parameter : ""
-          rtcpFb.push({
-            type: tf.type,
-            parameter
-          });
-
+        if (tf.payload == payload && tf.type != 'goog-remb') {
+          let parameter = tf.subtype ? tf.subtype : ""
+          for (let tfCap of codecCap.rtcpFeedback) {
+            if (tfCap.type == tf.type && tfCap.parameter == parameter) {
+              rtcpFb.push({
+                type: tf.type,
+                parameter
+              });
+              break;
+            }
+          }
         }
       }
 
@@ -127,15 +123,9 @@ export default class Media {
         }
       }
 
-      if (media.rtcpRsize) {
-        rtcpRsize = true;
-      }
-      if (media.rtcpMux) {
-        rtcpMux = true;
-      }
 
-      return new Media(media.type, codec, payload, rate, mid, cname, channels,
-        fmtp, media.ssrcs, media.ssrcGroups, rtcpFb, extension, rtx, rtcpMux, rtcpRsize);
+      return new Media(media.type, direction, codec, payload, rate, mid, cname, channels,
+        fmtp, media.ssrcs, media.ssrcGroups, rtcpFb, extension, rtx, media.protocol);
 
     }
 
@@ -143,10 +133,11 @@ export default class Media {
   }
 
   //TODO: dtx
-  constructor(type, codec, payload, rate, mid, cname,
+  constructor(type, direction, codec, payload, rate, mid, cname,
     channels = 1, parameters, ssrc, ssrcGroups,
-    rtcpFb, extension, rtx, rtcpMux, rtcpRsize) {
+    rtcpFb, extension, rtx, protocol) {
     this.type = type;
+    this.direction = direction;
     this.codec = codec;
     this.rate = rate;
     this.channels = channels;
@@ -177,8 +168,7 @@ export default class Media {
     this.cname = cname;
     this.reducedSize = true;
 
-    this.rtcpMux = rtcpMux;
-    this.rtcpRsize = rtcpRsize;
+    this.protocol = protocol;
 
     this.rtx = rtx;
   }
@@ -188,7 +178,7 @@ export default class Media {
 
     const headerExtensions = this.extension;
     const rtcp = {
-      "reducedSize": this.rtcpRsize,
+      "reducedSize": true,
       "cname": this.cname
     }
     const mid = this.mid;
@@ -236,5 +226,84 @@ export default class Media {
       },
     };
   }
+
+  toSdp(iceParameters, candidates, isActive) {
+    let lines = [];
+    //var
+    let port = 0;
+    if (isActive || this.mid == '0') {
+      port = 7;
+    }
+
+    let direction = `${this.direction}only`;
+    if (!isActive) {
+      direction = 'inactive';
+    }
+
+    let mLine = `m=${this.type} ${port} ${this.protocol} ${this.payload}`;
+    if(this.rtx){
+      mLine = mLine + ' ' + this.rtx;
+    }
+
+    //
+    lines.push(mLine);
+    lines.push(`c=IN IP4 127.0.0.1`);
+    if (this.channels == 1) {
+      lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}`);
+    } else {
+      lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}/${this.channels}`);
+    }
+
+    if (this.rtx) {
+      lines.push(`a=rtpmap:${this.rtx} rtx/${this.rate}`);
+    }
+
+    if (Object.keys(this.parameters).length > 0) {
+      lines.push(`a=fmtp:${this.payload} ${objToStr(this.parameters)}`);
+    }
+
+    if (this.rtx) {
+      lines.push(`a=fmtp:${this.rtx} apt=${this.payload}`);
+    }
+
+    //rtcp-feedback
+    for (let rf of this.rtcpFb) {
+      let str = `${rf.type} ${rf.parameter}`.trim();
+      lines.push(`a=rtcp-fb:${this.payload} ${str}`);
+    }
+
+    //extension
+    if (isActive) {
+      for (let e of this.extension) {
+        lines.push(`a=extmap:${e.id} ${e.uri}`);
+      }
+    }
+
+    //TODO: SSl role
+    lines.push(`a=setup:passive`);
+    lines.push(`a=mid:${this.mid}`);
+    lines.push(`a=${direction}`);
+
+    //ice 
+    lines.push(`a=ice-ufrag:${iceParameters.usernameFragment}`);
+    lines.push(`a=ice-pwd:${iceParameters.password}`);
+
+    //candiate
+    for (let c of candidates) {
+      lines.push(`a=candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.ip} ${c.port} typ ${c.type}`);
+    }
+
+    lines.push(`a=end-of-candidates`);
+
+    //TODO:
+    lines.push(`a=ice-options:renomination`);
+
+    lines.push(`a=rtcp-mux`);
+    lines.push(`a=rtcp-rsize`);
+
+    return lines.join('\r\n');
+  }
+
+
 
 }
