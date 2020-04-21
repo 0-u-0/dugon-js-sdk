@@ -20,7 +20,7 @@ export default class Session {
     this.publisher = null;
     this.subscriber = null;
 
-    this.codecs = null;
+    this.supportedCodecs = null;
     //event
     this.onin = null;
     this.onout = null;
@@ -61,7 +61,7 @@ export default class Session {
     if (sub) {
       this.initTransport('sub', transportParameters.sub);
     }
-    this.codecs = transportParameters.codecs;
+    this.supportedCodecs = transportParameters.codecs;
   }
 
   initTransport(role, transportParameters) {
@@ -164,13 +164,8 @@ export default class Session {
         }
       }
 
-      let codecCap = null;
-      for(let c of this.codecs){
-        if(c.codecName === codec ){
-          codecCap = c;
-        }
-      }
-
+ 
+      let codecCap = this.supportedCodecs[codec];
       if(codecCap){
         this.publisher.send(track, codecCap);
       }else{
