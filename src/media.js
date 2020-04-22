@@ -30,6 +30,11 @@ export default class Media {
       let extension = [];
       let ssrc;
 
+      let parametersShit = [];
+
+      for(let k in codecCap.parameters){
+        parametersShit.push(`${k}=${codecCap.parameters[k]}`)
+      }
       //TODO: h264
       // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
       if (codecCap.codecName.slice(0, 4) == 'H264') {
@@ -37,7 +42,7 @@ export default class Media {
 
         for (let f of media.fmtp) {
           let matched = true;
-          for (let p of codecCap.parameters) {
+          for (let p of parametersShit) {
             if (!f.config.includes(p)) {
               matched = false;
             }
@@ -107,7 +112,7 @@ export default class Media {
       }
 
       //codecCap, ext should be merged
-      let avaiableExt = codecCap.ext.filter(ext => ext[direction]);
+      let avaiableExt = codecCap.extensions.filter(ext => ext[direction]);
 
       for (let e of media.ext) {
         for (let ae of avaiableExt) {
