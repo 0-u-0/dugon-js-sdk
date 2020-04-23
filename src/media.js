@@ -1,3 +1,4 @@
+import Codec from './codec';
 
 const H264_BASELINE = '42001f';
 const H264_CONSTRAINED_BASELINE = '42e01f'
@@ -119,9 +120,7 @@ export default class Media {
           if (e.uri == ae.uri) {
             let newExt = {
               'id': e.value,
-              'uri': e.uri,
-              'encrypt': false,
-              'parameters': {}
+              'uri': e.uri
             }
             extension.push(newExt);
             break;
@@ -170,7 +169,7 @@ export default class Media {
     rtcpFb, extension, rtx, protocol) {
     this.type = type;
     this.direction = direction;
-    this.codec = codec;
+    this.codecName = codec;
     this.rate = rate;
     this.channels = channels;
 
@@ -190,57 +189,25 @@ export default class Media {
   }
 
 
-  toRtpParameters() {
+  toCodec() {
+    let codec = new Codec()
+    codec.kind = this.type;
+    codec.payload = this.payload;
+    codec.cname = this.cname;
+    codec.channels = this.channels;
+    codec.clockRate = this.rate;
+    codec.codecName = this.codecName;
+    codec.codecFullName = this.codecName;
+    codec.parameters = this.parameters;
+    codec.rtcpFeedback = this.rtcpFb;
+    codec.extensions = this.extension;
+    codec.reducedSize = true;
+    codec.mid = this.mid
 
-    const headerExtensions = this.extension;
-    const rtcp = {
-      "reducedSize": true,
-      "cname": this.cname
-    }
-    const mid = this.mid;
-
-    const codecs = [
-      {
-        "mimeType": `${this.type}/${this.codec}`,
-        "payloadType": this.payload,
-        "clockRate": this.rate,
-        "channels": this.channels,
-        "parameters": this.parameters,
-        "rtcpFeedback": this.rtcpFb
-      }
-    ];
-
-    const encodings = [
-      {
-        "ssrc": this.ssrc,
-        //TODO: 
-        "dtx": false
-      }
-    ]
-
-    if ('video' == this.type && this.rtx) {
-      codecs.push({
-        "mimeType": `video/rtx`,
-        "payloadType": this.rtx.payload,
-        "clockRate": this.rate,
-        "channels": this.channels,
-        "parameters": {
-          "apt": this.payload
-        },
-        "rtcpFeedback": []
-      })
-      //TODO: get id from ssrc group
-      encodings[0]["rtx"] = {
-        "ssrc": this.rtx.ssrc
-      };
-    }
-
-    return {
-      "kind": this.type,
-      "rtpParameters": {
-        codecs, headerExtensions, rtcp, mid, encodings
-      },
-    };
+    codec.rtx = this.rtx;
+    //TODO: dtx
+    codec.dtx = false;  
+    return codec;
   }
 
   // toSdp(iceParameters, candidates, isActive) {
@@ -348,9 +315,9 @@ export default class Media {
     lines.push(mLine);
     lines.push(`c=IN IP4 127.0.0.1`);
     if (this.channels == 1) {
-      lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}`);
+      lines.push(`a=rtpmap:${this.payload} ${this.codecName}/${this.rate}`);
     } else {
-      lines.push(`a=rtpmap:${this.payload} ${this.codec}/${this.rate}/${this.channels}`);
+      lines.push(`a=rtpmap:${this.payload} ${this.codecName}/${this.rate}/${this.channels}`);
     }
 
     if (this.rtx) {

@@ -74,7 +74,9 @@ export default class Publisher extends Transport {
     const transceiver = await this.pc.addTransceiver(track, {
       direction: 'sendonly',
     });
-    const sender = new Sender(track, transceiver);
+    const sender = new Sender(track, transceiver,{
+      test: 'test'
+    });
     this.senders.push(sender);
 
     const localSdp = await this.pc.createOffer();
@@ -86,17 +88,8 @@ export default class Publisher extends Transport {
 
     await this.pc.setRemoteDescription(remoteSdp);
 
-    console.log(sender.media);
-    const producingData = sender.media.toRtpParameters();
-    console.log(producingData);
-    if (producingData) {
-      //TODO: handle metadata
-      producingData.metadata = {
-        test: 'test'
-      };
-      this.onsender(producingData, sender);
-    }
 
+    this.onsender(sender);
   }
 
   stopSender(senderId) {

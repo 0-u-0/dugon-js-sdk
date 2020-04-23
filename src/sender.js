@@ -1,7 +1,8 @@
 export default class Sender {
-  constructor(track, transceiver) {
+  constructor(track, transceiver, metadata) {
     this.track = track;
     this.transceiver = transceiver;
+    this.metadata = metadata;
 
     this.senderId = 0;
     

@@ -92,12 +92,13 @@ export default class Session {
         });
       };
 
-      this.publisher.onsender = async (producingParameters, sender) => {
+      this.publisher.onsender = async (sender) => {
         const data = await this.socket.request({
           event: 'publish',
           data: {
             transportId: this.publisher.id,
-            ...producingParameters
+            codec: sender.media.toCodec(),
+            metadata: sender.metadata
           }
         })
         const { senderId } = data;
@@ -148,27 +149,27 @@ export default class Session {
 
   }
 
-  //TODO: simulcast config
+  //TODO: simulcast config , metadata
   //codec , opus, VP8,VP9, H264-BASELINE, H264-CONSTRAINED-BASELINE, H264-MAIN, H264-HIGH
   async publish(track, options = {
     svc: false
   }) {
     //TODO: fix state
     if (this.publisher.state >= 2) {
-      let { codec , svc = false} = options;
-      if(!codec){
-        if(track.kind == 'audio'){
+      let { codec, svc = false } = options;
+      if (!codec) {
+        if (track.kind == 'audio') {
           codec = DEFAULT_AUDIO_CODEC;
-        }else if(track.kind == 'video'){
+        } else if (track.kind == 'video') {
           codec = DEFAULT_VIDEO_CODEC;
         }
       }
 
- 
+
       let codecCap = this.supportedCodecs[codec];
-      if(codecCap){
+      if (codecCap) {
         this.publisher.send(track, codecCap);
-      }else{
+      } else {
         //TODO: 
       }
     }
