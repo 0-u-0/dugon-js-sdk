@@ -23,7 +23,6 @@ export default class Publisher extends Transport {
   }
 
   init() {
-    //配置重要
     this.pc = new RTCPeerConnection({ iceServers: [], iceTransportPolicy: 'all', bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require', sdpSemantics: "unified-plan" });
 
     this.pc.onconnectionstatechange = event => {
@@ -104,7 +103,6 @@ export default class Publisher extends Transport {
 
         let localSdp = await this.pc.createOffer();
 
-        let localSdpObj = sdpTransform.parse(localSdp.sdp);
         await this.pc.setLocalDescription(localSdp);
         let remoteSdp = this.generateSdp();
         await this.pc.setRemoteDescription(remoteSdp);
