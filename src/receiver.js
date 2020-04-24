@@ -12,7 +12,7 @@ export default class Receiver {
     this.active = false;
     this.mid = mid;
 
-    this.media = new Media(this.rtpParameters.kind,'send',this.rtpParameters.codecName,
+    this.media = new Media(this.rtpParameters.kind,'sendonly',this.rtpParameters.codecName,
     this.rtpParameters.payloadType,this.rtpParameters.clockRate,this.mid,this.rtpParameters.cname,
     this.rtpParameters.channels,this.rtpParameters.parameters,this.rtpParameters.ssrc,
     this.rtpParameters.rtcpFeedback,this.rtpParameters.ext,this.rtpParameters.rtx,'UDP/TLS/RTP/SAVPF')

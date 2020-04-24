@@ -13,6 +13,9 @@ export default class Publisher extends Transport {
 
     this.senders = [];
 
+    //follow sdp stupid mid's order
+    this.usedMids = [];
+
     this.asyncQueue = new AsyncQueue();
     // new 0 , initing 1 , inited 2 , ready 3
     this.state = 0;
@@ -53,8 +56,16 @@ export default class Publisher extends Transport {
   getLocalSdpData(sender, localSdp, codecCap) {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 
+    let mids = [];
+    for (let media of localSdpObj.media){
+      mids.push(media.mid);
+      if (media.mid == sender.mid){
+        sender.media = Media.merge(media,codecCap);
+      }
+    }
+
+    this.usedMids = mids;
     //remote media
-    sender.media = Media.createMedia(sender.mid, 'recv', codecCap, localSdpObj);
 
     if (false === this.isGotDtls) {
       this.isGotDtls = true;
@@ -104,6 +115,10 @@ export default class Publisher extends Transport {
         let localSdp = await this.pc.createOffer();
 
         await this.pc.setLocalDescription(localSdp);
+
+        let localSdpObj = sdpTransform.parse(localSdp.sdp);
+        this.usedMids = localSdpObj.media.map(m=>{m.mid})
+
         let remoteSdp = this.generateSdp();
         await this.pc.setRemoteDescription(remoteSdp);
 

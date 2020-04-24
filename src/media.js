@@ -14,155 +14,154 @@ function objToStr(obj) {
 }
 
 export default class Media {
-  static createMedia(mid, direction, codecCap, sdp) {
+  //for send
+  static merge(media, codecCap) {
+
     //codecCap, ext should be merged
-    let media;
-    for (let m of sdp.media) {
-      if (m.mid == mid) {
-        media = m;
+    let codec, payload, rate, channels,
+      fmtp, rtx, cname;
+
+    let rtcpFb = [];
+    let extension = [];
+    let ssrc,direction;
+
+    let parametersShit = [];
+
+    if(media.direction === 'inactive'){
+      direction = 'inactive';
+    }else{
+      direction = 'recvonly'
+    }
+
+    for (let k in codecCap.parameters) {
+      parametersShit.push(`${k}=${codecCap.parameters[k]}`)
+    }
+    //TODO: h264
+    // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
+    if (codecCap.codecName.slice(0, 4) == 'H264') {
+      codec = 'H264';
+
+      for (let f of media.fmtp) {
+        let matched = true;
+        for (let p of parametersShit) {
+          if (!f.config.includes(p)) {
+            matched = false;
+          }
+        }
+        if (matched) {
+          payload = f.payload;
+          fmtp = f.config;
+        }
+
+        if (f.config == `apt=${payload}`) {
+          rtx = { payload: f.payload };
+        }
+      }
+
+      for (let rtp of media.rtp) {
+        if (rtp.payload == payload) {
+          rate = rtp.rate;
+          channels = rtp.encoding;
+        }
+      }
+
+    } else {
+      codec = codecCap.codecName;
+
+      for (let rtp of media.rtp) {
+        if (rtp.codec == codec) {
+          payload = rtp.payload;
+          rate = rtp.rate;
+          channels = rtp.encoding;
+        }
+      }
+
+      for (let f of media.fmtp) {
+        if (f.payload == payload) {
+          fmtp = f.config;
+        }
+        if (f.config == `apt=${payload}`) {
+          rtx = { payload: f.payload };
+        }
+      }
+    }
+
+    for (let s of media.ssrcs) {
+      if (s.attribute == 'cname') {
+        cname = s.value;
         break;
       }
     }
-    if (media) {
-      let codec, payload, rate, channels,
-        fmtp, rtx, cname;
 
-      let rtcpFb = [];
-      let extension = [];
-      let ssrc;
-
-      let parametersShit = [];
-
-      for(let k in codecCap.parameters){
-        parametersShit.push(`${k}=${codecCap.parameters[k]}`)
-      }
-      //TODO: h264
-      // H264_BASELINE,H264_CONSTRAINED_BASELINE,H264_MAIN,H264_HIGH
-      if (codecCap.codecName.slice(0, 4) == 'H264') {
-        codec = 'H264';
-
-        for (let f of media.fmtp) {
-          let matched = true;
-          for (let p of parametersShit) {
-            if (!f.config.includes(p)) {
-              matched = false;
-            }
-          }
-          if (matched) {
-            payload = f.payload;
-            fmtp = f.config;
-          }
-
-          if (f.config == `apt=${payload}`) {
-            rtx = { payload: f.payload };
-          }
-        }
-
-        for (let rtp of media.rtp) {
-          if (rtp.payload == payload) {
-            rate = rtp.rate;
-            channels = rtp.encoding;
-          }
-        }
-
-      } else {
-        codec = codecCap.codecName;
-
-        for (let rtp of media.rtp) {
-          if (rtp.codec == codec) {
-            payload = rtp.payload;
-            rate = rtp.rate;
-            channels = rtp.encoding;
-          }
-        }
-
-        for (let f of media.fmtp) {
-          if (f.payload == payload) {
-            fmtp = f.config;
-          }
-          if (f.config == `apt=${payload}`) {
-            rtx = { payload: f.payload };
+    //codecCap, rtcpFb should be merged
+    /**
+     //TODO:  use transport-cc as default , extension
+     */
+    for (let tf of media.rtcpFb) {
+      if (tf.payload == payload && tf.type != 'goog-remb') {
+        let parameter = tf.subtype ? tf.subtype : ""
+        for (let tfCap of codecCap.rtcpFeedback) {
+          if (tfCap.type == tf.type && tfCap.parameter == parameter) {
+            rtcpFb.push({
+              type: tf.type,
+              parameter
+            });
+            break;
           }
         }
       }
+    }
 
-      for (let s of media.ssrcs) {
-        if (s.attribute == 'cname') {
-          cname = s.value;
+    //codecCap, ext should be merged
+    let avaiableExt = codecCap.extensions.filter(ext => ext['recv']);
+
+    for (let e of media.ext) {
+      for (let ae of avaiableExt) {
+        if (e.uri == ae.uri) {
+          let newExt = {
+            'id': e.value,
+            'uri': e.uri
+          }
+          extension.push(newExt);
           break;
         }
       }
-
-      //codecCap, rtcpFb should be merged
-      /**
-       //TODO:  use transport-cc as default , extension
-       */
-      for (let tf of media.rtcpFb) {
-        if (tf.payload == payload && tf.type != 'goog-remb') {
-          let parameter = tf.subtype ? tf.subtype : ""
-          for (let tfCap of codecCap.rtcpFeedback) {
-            if (tfCap.type == tf.type && tfCap.parameter == parameter) {
-              rtcpFb.push({
-                type: tf.type,
-                parameter
-              });
-              break;
-            }
-          }
-        }
-      }
-
-      //codecCap, ext should be merged
-      let avaiableExt = codecCap.extensions.filter(ext => ext[direction]);
-
-      for (let e of media.ext) {
-        for (let ae of avaiableExt) {
-          if (e.uri == ae.uri) {
-            let newExt = {
-              'id': e.value,
-              'uri': e.uri
-            }
-            extension.push(newExt);
-            break;
-          }
-        }
-      }
-
-      //ssrc
-      ssrc = media.ssrcs[0].id;
-      if (media.ssrcGroups) {
-        for (let sg of media.ssrcGroups) {
-          if (sg.semantics == 'FID') {
-            rtx.ssrc = parseInt(sg.ssrcs.split(' ')[1]);
-            break;
-          }
-        }
-      }
-
-      let parameters = {};
-      if (fmtp) {
-        let p1 = fmtp.split(';')
-        for (let l of p1) {
-          let r = l.split('=');
-          let key = r[0];
-          let value = r[1];
-          if (!isNaN(r[1])) {
-            value = parseInt(value)
-          }
-          parameters[key] = value
-        }
-      } 
-
-
-
-      return new Media(media.type, direction, codec, payload, rate, mid, cname, channels,
-        parameters, ssrc, rtcpFb, extension, rtx, media.protocol);
-
     }
 
-    return null;
+    //ssrc
+    ssrc = media.ssrcs[0].id;
+    if (media.ssrcGroups) {
+      for (let sg of media.ssrcGroups) {
+        if (sg.semantics == 'FID') {
+          rtx.ssrc = parseInt(sg.ssrcs.split(' ')[1]);
+          break;
+        }
+      }
+    }
+
+    let parameters = {};
+    if (fmtp) {
+      let p1 = fmtp.split(';')
+      for (let l of p1) {
+        let r = l.split('=');
+        let key = r[0];
+        let value = r[1];
+        if (!isNaN(r[1])) {
+          value = parseInt(value)
+        }
+        parameters[key] = value
+      }
+    }
+
+
+
+    return new Media(media.type, direction, codec, payload, rate, mid, cname, channels,
+      parameters, ssrc, rtcpFb, extension, rtx, media.protocol);
   }
 
+  get available(){
+    return this.direction != "inactive"
+  }
   //TODO: dtx
   constructor(type, direction, codec, payload, rate, mid, cname,
     channels = 1, parameters, ssrc,
@@ -206,7 +205,7 @@ export default class Media {
 
     codec.rtx = this.rtx;
     //TODO: dtx
-    codec.dtx = false;  
+    codec.dtx = false;
     return codec;
   }
 
@@ -222,7 +221,7 @@ export default class Media {
   //       port = 7;
   //     }
   //   }
- 
+
 
   //   let direction = `${this.direction}only`;
   //   if (!isActive) {
@@ -293,18 +292,15 @@ export default class Media {
   //   return lines.join('\r\n');
   // }
 
-  toSdp2(iceParameters, candidates, isActive, receiverId) {
+  toSdp2(iceParameters, candidates, receiverId) {
     let lines = [];
     //var
     let port = 0;
-    if (isActive || this.mid == '0') {
+    if (this.available || this.mid == '0') {
       port = 7;
     }
 
-    let direction = `${this.direction}only`;
-    if (!isActive) {
-      direction = 'inactive';
-    }
+    direction = this.direction;
 
     let mLine = `m=${this.type} ${port} ${this.protocol} ${this.payload}`;
     if (this.rtx) {
@@ -339,16 +335,16 @@ export default class Media {
     }
 
     //extension
-    if (isActive) {
+    if (this.available) {
       for (let e of this.extension) {
         lines.push(`a=extmap:${e.id} ${e.uri}`);
       }
     }
 
     //TODO: SSl role
-    if(this.direction == 'send'){
+    if (this.direction == 'sendonly') {
       lines.push(`a=setup:actpass`);
-    }else if(this.direction == 'recv'){
+    } else if (this.direction == 'recvonly') {
       lines.push(`a=setup:passive`);
     }
 
@@ -356,7 +352,7 @@ export default class Media {
 
     //TODO: msid
     //send only
-    if (this.direction === 'send') {
+    if (this.direction === 'sendonly') {
       lines.push(`a=msid:${this.cname} ${receiverId}`);
     }
 
@@ -376,8 +372,8 @@ export default class Media {
     //TODO:
     lines.push(`a=ice-options:renomination`);
 
-    if (this.direction === 'send') {
-      if(this.rtx){
+    if (this.direction === 'sendonly') {
+      if (this.rtx) {
         lines.push(`a=ssrc-group:FID ${this.ssrc} ${this.rtx.ssrc}`);
       }
 
