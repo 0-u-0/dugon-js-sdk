@@ -15,7 +15,7 @@ function objToStr(obj) {
 
 export default class Media {
   //for send
-  static merge(media, codecCap) {
+  static merge(media, codecCap, iceParameters, iceCandidates) {
 
     //codecCap, ext should be merged
     let codec, payload, rate, channels,
@@ -23,13 +23,13 @@ export default class Media {
 
     let rtcpFb = [];
     let extension = [];
-    let ssrc,direction;
+    let ssrc, direction;
 
     let parametersShit = [];
 
-    if(media.direction === 'inactive'){
+    if (media.direction === 'inactive') {
       direction = 'inactive';
-    }else{
+    } else {
       direction = 'recvonly'
     }
 
@@ -155,11 +155,14 @@ export default class Media {
 
 
 
-    return new Media(media.type, direction, codec, payload, rate, mid, cname, channels,
+    let newMedia = new Media(media.type, direction, codec, payload, rate, media.mid, cname, channels,
       parameters, ssrc, rtcpFb, extension, rtx, media.protocol);
+    newMedia.iceUfrag = iceParameters.usernameFragment;
+    newMedia.icePwd = iceParameters.password;
+    return newMedia;
   }
 
-  get available(){
+  get available() {
     return this.direction != "inactive"
   }
   //TODO: dtx
@@ -167,7 +170,19 @@ export default class Media {
     channels = 1, parameters, ssrc,
     rtcpFb, extension, rtx, protocol) {
     this.type = type;
+    //TODO:  port 
+    this.port = 0;
+    this.mid = mid;
+
+    this.protocol = protocol;
+    //TODO:  connection
+    this.connection = '';
     this.direction = direction;
+    //TODO: iceUfrag icePwd iceOptions
+    this.iceUfrag = '';
+    this.icePwd = '';
+    this.iceOptions = '';
+
     this.codecName = codec;
     this.rate = rate;
     this.channels = channels;
@@ -178,11 +193,9 @@ export default class Media {
 
     this.rtcpFb = rtcpFb;
     this.extension = extension;
-    this.mid = mid;
     this.cname = cname;
     this.reducedSize = true;
 
-    this.protocol = protocol;
 
     this.rtx = rtx;
   }
@@ -292,15 +305,13 @@ export default class Media {
   //   return lines.join('\r\n');
   // }
 
-  toSdp2(iceParameters, candidates, receiverId) {
+  toSdp2() {
     let lines = [];
     //var
     let port = 0;
     if (this.available || this.mid == '0') {
       port = 7;
     }
-
-    direction = this.direction;
 
     let mLine = `m=${this.type} ${port} ${this.protocol} ${this.payload}`;
     if (this.rtx) {
@@ -356,15 +367,17 @@ export default class Media {
       lines.push(`a=msid:${this.cname} ${receiverId}`);
     }
 
-    lines.push(`a=${direction}`);
+    lines.push(`a=${this.direction}`);
 
     //ice 
-    lines.push(`a=ice-ufrag:${iceParameters.usernameFragment}`);
-    lines.push(`a=ice-pwd:${iceParameters.password}`);
+    lines.push(`a=ice-ufrag:${this.iceUfrag}`);
+    lines.push(`a=ice-pwd:${this.icePwd}`);
 
-    //candiate
-    for (let c of candidates) {
-      lines.push(`a=candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.ip} ${c.port} typ ${c.type}`);
+    //TODO: use other direction
+    if(this.direction === 'sendonly'){
+      for (let c of candidates) {
+        lines.push(`a=candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.ip} ${c.port} typ ${c.type}`);
+      }
     }
 
     lines.push(`a=end-of-candidates`);

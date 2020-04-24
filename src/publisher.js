@@ -6,6 +6,7 @@ import Sender from './sender';
 
 import Transport from './transport';
 import Media from './media';
+import Sdp from './sdp';
 
 export default class Publisher extends Transport {
   constructor(id, remoteICECandidates, remoteICEParameters, remoteDTLSParameters) {
@@ -57,10 +58,10 @@ export default class Publisher extends Transport {
     let localSdpObj = sdpTransform.parse(localSdp.sdp);
 
     let mids = [];
-    for (let media of localSdpObj.media){
+    for (let media of localSdpObj.media) {
       mids.push(media.mid);
-      if (media.mid == sender.mid){
-        sender.media = Media.merge(media,codecCap);
+      if (media.mid == sender.mid) {
+        sender.media = Media.merge(media, codecCap, this.remoteICEParameters, this.remoteICECandidates);
       }
     }
 
@@ -84,7 +85,7 @@ export default class Publisher extends Transport {
     const transceiver = await this.pc.addTransceiver(track, {
       direction: 'sendonly',
     });
-    const sender = new Sender(track, transceiver,{
+    const sender = new Sender(track, transceiver, {
       test: 'test'
     });
     this.senders.push(sender);
@@ -117,7 +118,7 @@ export default class Publisher extends Transport {
         await this.pc.setLocalDescription(localSdp);
 
         let localSdpObj = sdpTransform.parse(localSdp.sdp);
-        this.usedMids = localSdpObj.media.map(m=>{m.mid})
+        this.usedMids = localSdpObj.media.map(m => { m.mid })
 
         let remoteSdp = this.generateSdp();
         await this.pc.setRemoteDescription(remoteSdp);
@@ -128,35 +129,51 @@ export default class Publisher extends Transport {
   }
 
   generateSdp() {
-    const lines = [];
-    lines.push(`v=0`);
-    //TODO: use random id
-    lines.push(`o=- 10000 2 IN IP4 127.0.0.1`);
-    lines.push(`s=-`);
-    lines.push(`t=0 0`);
-    lines.push(`a=ice-lite`);
+    // const lines = [];
+    // lines.push(`v=0`);
+    // //TODO: use random id
+    // lines.push(`o=- 10000 2 IN IP4 127.0.0.1`);
+    // lines.push(`s=-`);
+    // lines.push(`t=0 0`);
+    // lines.push(`a=ice-lite`);
 
-    const groupLength = lines.push(`a=group:BUNDLE `);
-    lines.push(`a=msid-semantic: WMS *`);
-    lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
+    // const groupLength = lines.push(`a=group:BUNDLE `);
+    // lines.push(`a=msid-semantic: WMS *`);
+    // lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
 
-    let mids = [];
-    for (let sender of this.senders) {
-      //is stopped remove sdp
-      if (!sender.isStopped || sender.mid === '0') {
-        if (sender.available || sender.mid === '0') {
-          mids.push(sender.mid);
-        }
-        lines.push(sender.toSdp(this.remoteICEParameters, this.remoteICECandidates));
+    // let mids = [];
+    // for (let sender of this.senders) {
+    //   //is stopped remove sdp
+    //   if (!sender.isStopped || sender.mid === '0') {
+    //     if (sender.available || sender.mid === '0') {
+    //       mids.push(sender.mid);
+    //     }
+    //     lines.push(sender.toSdp(this.remoteICEParameters, this.remoteICECandidates));
+    //   }
+    // }
+
+    // //add BUNDLE
+    // lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
+
+    // let sdp = lines.join('\r\n');
+    // sdp = sdp + '\r\n';
+    let sdpObj = new Sdp();
+    sdpObj.fingerprint = {
+      algorithm: this.remoteDTLSParameters.fingerprint.algorithm,
+      hash: this.remoteDTLSParameters.fingerprint.value
+    }
+
+    for (let mid of this.usedMids) {
+      let sender = this.senders.find(s =>s.mid == String(mid))
+      if (sender) {
+        sdpObj.medias.push(sender.media)
       }
     }
 
-    //add BUNDLE
-    lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
-
-    let sdp = lines.join('\r\n');
-    sdp = sdp + '\r\n';
-    
+    let sdp = sdpObj.toString();
     return new RTCSessionDescription({ type: 'answer', sdp: sdp });
+
   }
+
+
 }
