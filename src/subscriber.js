@@ -33,7 +33,11 @@ export default class Subscriber extends Transport {
   }
 
   addReceiver(senderId, tokenId, receiverId, codec, metadata) {
-    const receiver = new Receiver(String(this.currentMid++), senderId, tokenId, receiverId, codec, metadata, this.remoteICEParameters, this.remoteICECandidates);
+    const mid = String(this.currentMid++);
+
+    const media = Media.create(mid, codec, this.remoteICEParameters, this.remoteICECandidates, receiverId);
+
+    const receiver = new Receiver(mid, senderId, tokenId, receiverId, codec, metadata, media);
 
     this.receivers.set(senderId, receiver);
     return receiver;

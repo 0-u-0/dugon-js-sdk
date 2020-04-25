@@ -1,7 +1,7 @@
 import Media from './media';
 
 export default class Receiver {
-  constructor(mid, senderId, tokenId, receiverId, codec, metadata, iceParameters, iceCandidates) {
+  constructor(mid, senderId, tokenId, receiverId, codec, metadata, media) {
     this.senderId = senderId;
     this.tokenId = tokenId;
     this.receiverId = receiverId;
@@ -12,7 +12,7 @@ export default class Receiver {
     this.active = false;
     this.mid = mid;
 
-    this.media = Media.create(mid, codec, iceParameters, iceCandidates, receiverId);
+    this.media = media;
   }
 
   get kind() {
