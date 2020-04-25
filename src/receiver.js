@@ -1,33 +1,30 @@
 import Media from './media';
 
 export default class Receiver {
-  constructor(mid,senderId, tokenId, receiverId, rtpParameters, metadata) {
+  constructor(mid, senderId, tokenId, receiverId, codec, metadata, iceParameters, iceCandidates) {
     this.senderId = senderId;
     this.tokenId = tokenId;
     this.receiverId = receiverId;
-    this.rtpParameters = rtpParameters;
+    this.codec = codec;
 
     this.metadata = metadata;
 
     this.active = false;
     this.mid = mid;
 
-    this.media = new Media(this.rtpParameters.kind,'sendonly',this.rtpParameters.codecName,
-    this.rtpParameters.payloadType,this.rtpParameters.clockRate,this.mid,this.rtpParameters.cname,
-    this.rtpParameters.channels,this.rtpParameters.parameters,this.rtpParameters.ssrc,
-    this.rtpParameters.rtcpFeedback,this.rtpParameters.ext,this.rtpParameters.rtx,'UDP/TLS/RTP/SAVPF')
+    this.media = Media.create(mid, codec, iceParameters, iceCandidates, receiverId);
   }
 
-  get kind(){
-    return this.rtpParameters.kind;
+  get kind() {
+    return this.codec.kind;
   }
 
-  get senderPaused(){
-    return this.rtpParameters.senderPaused;
+  get senderPaused() {
+    return this.codec.senderPaused;
   }
 
-  toSdp(iceParameters, candidates){
-    return this.media.toSdp2(iceParameters, candidates,this.active,this.receiverId);
+  toSdp(iceParameters, candidates) {
+    return this.media.toSdp(iceParameters, candidates, this.active, this.receiverId);
   }
 
 }

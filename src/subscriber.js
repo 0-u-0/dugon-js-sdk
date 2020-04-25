@@ -32,8 +32,8 @@ export default class Subscriber extends Transport {
     }
   }
 
-  addReceiver(senderId, tokenId, receiverId, parameters, metadata) {
-    const receiver = new Receiver(String(this.currentMid++), senderId, tokenId, receiverId, parameters, metadata);
+  addReceiver(senderId, tokenId, receiverId, codec, metadata) {
+    const receiver = new Receiver(String(this.currentMid++), senderId, tokenId, receiverId, codec, metadata, this.remoteICEParameters, this.remoteICECandidates);
 
     this.receivers.set(senderId, receiver);
     return receiver;

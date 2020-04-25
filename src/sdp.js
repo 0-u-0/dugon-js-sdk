@@ -325,7 +325,7 @@ export default class Sdp {
     }
 
     for (let media of this.medias) {
-      lines.push(media.toSdp2())
+      lines.push(media.toSdp())
     }
 
     let sdp = lines.join('\r\n')

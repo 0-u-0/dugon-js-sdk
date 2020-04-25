@@ -159,7 +159,41 @@ export default class Media {
       parameters, ssrc, rtcpFb, extension, rtx, media.protocol);
     newMedia.iceUfrag = iceParameters.usernameFragment;
     newMedia.icePwd = iceParameters.password;
+    newMedia.candidates = iceCandidates;
+    newMedia.role = 'recv';
     return newMedia;
+  }
+
+  static create(mid, codec, iceParameters, iceCandidates, receiverId) {
+    let media = new Media();
+    media.role = 'send';
+    media.type = codec.kind;
+    media.mid = mid;
+    media.port = 0;
+    media.protocol = 'UDP/TLS/RTP/SAVPF';
+    media.connection = 'IN IP4 127.0.0.1';
+    media.direction = 'sendonly';
+    media.iceUfrag = iceParameters.usernameFragment;
+    media.icePwd = iceParameters.password;
+    //TODO: iceOptions
+    media.iceOptions = '';
+    media.codecName = codec.codecName;
+    media.rate = codec.clockRate;
+    media.channels = codec.channels;
+    media.parameters = codec.parameters;
+    media.payload = codec.payload;
+    media.ssrc = codec.ssrc;
+    media.rtx = codec.rtx;
+    media.rtcpFb = codec.rtcpFeedback;
+    media.extension = codec.extensions;
+    media.cname = codec.cname;
+    media.reducedSize = codec.reducedSize;
+    media.candidates = iceCandidates;
+    //https://tools.ietf.org/html/draft-ietf-mmusic-msid-17#page-5
+    // this will become trackId 
+    media.msidAppdata = receiverId;
+
+    return media;
   }
 
   get available() {
@@ -169,6 +203,8 @@ export default class Media {
   constructor(type, direction, codec, payload, rate, mid, cname,
     channels = 1, parameters, ssrc,
     rtcpFb, extension, rtx, protocol) {
+    // send,recv
+    this.role = null;
     this.type = type;
     //TODO:  port 
     this.port = 0;
@@ -195,7 +231,8 @@ export default class Media {
     this.extension = extension;
     this.cname = cname;
     this.reducedSize = true;
-
+    this.candidates = [];
+    this.msidAppdata = null;
 
     this.rtx = rtx;
   }
@@ -222,7 +259,7 @@ export default class Media {
     return codec;
   }
 
-  toSdp2() {
+  toSdp() {
     let lines = [];
     //var
     let port = 0;
@@ -235,7 +272,6 @@ export default class Media {
       mLine = mLine + ' ' + this.rtx.payload;
     }
 
-    //
     lines.push(mLine);
     lines.push(`c=IN IP4 127.0.0.1`);
     if (this.channels == 1) {
@@ -270,18 +306,17 @@ export default class Media {
     }
 
     //TODO: SSl role
-    if (this.direction == 'sendonly') {
+    if (this.role == 'send') {
       lines.push(`a=setup:actpass`);
-    } else if (this.direction == 'recvonly') {
+    } else if (this.role == 'recv') {
       lines.push(`a=setup:passive`);
     }
 
     lines.push(`a=mid:${this.mid}`);
 
-    //TODO: msid
-    //send only
-    if (this.direction === 'sendonly') {
-      lines.push(`a=msid:${this.cname} ${receiverId}`);
+    //send 
+    if (this.role === 'send') {
+      lines.push(`a=msid:${this.cname} ${this.msidAppdata}`);
     }
 
     lines.push(`a=${this.direction}`);
@@ -291,25 +326,24 @@ export default class Media {
     lines.push(`a=ice-pwd:${this.icePwd}`);
 
     //TODO: use other direction
-    if(this.direction === 'sendonly'){
-      for (let c of candidates) {
+    if (this.candidates.length > 0) {
+      for (let c of this.candidates) {
         lines.push(`a=candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.ip} ${c.port} typ ${c.type}`);
       }
+      lines.push(`a=end-of-candidates`);
     }
 
-    lines.push(`a=end-of-candidates`);
 
     //TODO:
     lines.push(`a=ice-options:renomination`);
 
-    if (this.direction === 'sendonly') {
+    if (this.role === 'send') {
       if (this.rtx) {
         lines.push(`a=ssrc-group:FID ${this.ssrc} ${this.rtx.ssrc}`);
       }
 
       lines.push(`a=ssrc:${this.ssrc} cname:${this.cname}`);
       if (this.rtx) {
-        lines.push(`a=ssrc:${this.rtx.ssrc} cname:${this.cname}`);
         lines.push(`a=ssrc:${this.rtx.ssrc} cname:${this.cname}`);
       }
     }

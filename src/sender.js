@@ -31,7 +31,7 @@ export default class Sender {
   }
 
   toSdp(iceParameters, candidates){
-    return this.media.toSdp2(iceParameters, candidates,this.available);
+    return this.media.toSdp(iceParameters, candidates,this.available);
   }
 
 }

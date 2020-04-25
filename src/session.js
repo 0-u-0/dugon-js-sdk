@@ -155,7 +155,7 @@ export default class Session {
     svc: false
   }) {
     //TODO: fix state
-    if (this.publisher.state >= 2) {
+    if (track && this.publisher.state >= 2) {
       let { codec, svc = false } = options;
       if (!codec) {
         if (track.kind == 'audio') {
@@ -240,6 +240,7 @@ export default class Session {
     switch (event) {
       case 'join': {
         let { tokenId, metadata } = data;
+        //TODO: check
         this.onin(tokenId, metadata);
         break;
       };
@@ -253,9 +254,9 @@ export default class Session {
         break;
       };
       case 'publish': {
-        let { senderId, tokenId, metadata, parameters, receiverId } = data;
+        let { senderId, tokenId, metadata, codec, receiverId } = data;
         if (this.subscriber) {
-          let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, parameters, metadata);
+          let receiver = this.subscriber.addReceiver(senderId, tokenId, receiverId, codec, metadata);
           this.onreceiver(receiver, tokenId, senderId, metadata);
         }
 
