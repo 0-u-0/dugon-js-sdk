@@ -172,7 +172,8 @@ export default class Media {
     media.port = 0;
     media.protocol = 'UDP/TLS/RTP/SAVPF';
     media.connection = 'IN IP4 127.0.0.1';
-    media.direction = 'sendonly';
+    //enable after subscribe
+    media.direction = 'inactive';
     media.iceUfrag = iceParameters.usernameFragment;
     media.icePwd = iceParameters.password;
     //TODO: iceOptions

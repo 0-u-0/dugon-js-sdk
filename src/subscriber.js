@@ -6,6 +6,8 @@ import Transport from './transport';
 import Receiver from './receiver';
 
 import { getDtls } from './utils';
+import Media from './media';
+import Sdp from './sdp';
 
 
 export default class Subscriber extends Transport {
@@ -51,10 +53,8 @@ export default class Subscriber extends Transport {
   }
 
   async _receive(receiver) {
-    if (!receiver.active) {
-      receiver.active = true;
-    }
 
+    receiver.media.direction = "sendonly";
     let remoteSdp = this.generateSdp();
 
     await this.pc.setRemoteDescription(remoteSdp);
@@ -81,14 +81,14 @@ export default class Subscriber extends Transport {
 
   removeReceiver(senderId) {
     const receiver = this.receivers.get(senderId);
-    if (receiver && receiver.active) {
+    if (receiver) {
       this.asyncQueue.push(this, this._removeReceiver, [receiver]);
     }
   }
 
   async _removeReceiver(receiver) {
-    receiver.active = false;
 
+    receiver.media.direction = 'inactive';
     let remoteSdp = this.generateSdp();
 
     await this.pc.setRemoteDescription(remoteSdp);
@@ -103,31 +103,21 @@ export default class Subscriber extends Transport {
   }
 
   generateSdp() {
-    const lines = [];
-    lines.push(`v=0`);
-    //TODO: use random id
-    lines.push(`o=- 10000 2 IN IP4 127.0.0.1`);
-    lines.push(`s=-`);
-    lines.push(`t=0 0`);
-    lines.push(`a=ice-lite`);
 
-    const groupLength = lines.push(`a=group:BUNDLE `);
-    lines.push(`a=msid-semantic: WMS`);
-    lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
-
-    let mids = [];
-    for (let [key, receiver] of this.receivers) {
-      //is stopped remove sdp
-      lines.push(receiver.toSdp(this.remoteICEParameters, this.remoteICECandidates));
-      mids.push(receiver.mid);
+    let sdpObj = new Sdp();
+    sdpObj.fingerprint = {
+      algorithm: this.remoteDTLSParameters.fingerprint.algorithm,
+      hash: this.remoteDTLSParameters.fingerprint.value
     }
 
-    //add BUNDLE
-    lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
+    for (let [key, receiver] of this.receivers) {
+      //is stopped remove sdp
+      // lines.push(receiver.media.toSdp());
+      // mids.push(receiver.mid);
+      sdpObj.medias.push(receiver.media)
+    }
 
-    let sdp = lines.join('\r\n');
-    sdp = sdp + '\r\n';
-
+    let sdp = sdpObj.toString();
     return new RTCSessionDescription({ type: 'offer', sdp: sdp });
   }
 

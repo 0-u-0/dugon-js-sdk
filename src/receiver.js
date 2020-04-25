@@ -9,7 +9,6 @@ export default class Receiver {
 
     this.metadata = metadata;
 
-    this.active = false;
     this.mid = mid;
 
     this.media = media;
@@ -23,8 +22,5 @@ export default class Receiver {
     return this.codec.senderPaused;
   }
 
-  toSdp(iceParameters, candidates) {
-    return this.media.toSdp(iceParameters, candidates, this.active, this.receiverId);
-  }
 
 }

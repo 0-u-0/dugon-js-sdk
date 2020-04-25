@@ -287,6 +287,7 @@ export default class Sdp {
     this.origin = '- 10000 2 IN IP4 127.0.0.1';
     this.timing = '0 0';
     this.name = '-'
+    this.iceLite = true;
     //TODO: remove ,use bundle
     this.group = null;
     this.msidSemantic = ' WMS *';
@@ -311,6 +312,10 @@ export default class Sdp {
 
     if (this.timing) {
       lines.push(`t=${this.timing}`)
+    }
+
+    if(this.iceLite){
+      lines.push(`a=ice-lite`);
     }
 
     if (this.msidSemantic) {
