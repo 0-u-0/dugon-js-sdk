@@ -118,7 +118,7 @@ export default class Publisher extends Transport {
         await this.pc.setLocalDescription(localSdp);
 
         let localSdpObj = sdpTransform.parse(localSdp.sdp);
-        this.usedMids = localSdpObj.media.map(m => { m.mid })
+        this.usedMids = localSdpObj.media.map(m =>m.mid)
 
         let remoteSdp = this.generateSdp();
         await this.pc.setRemoteDescription(remoteSdp);
