@@ -129,34 +129,6 @@ export default class Publisher extends Transport {
   }
 
   generateSdp() {
-    // const lines = [];
-    // lines.push(`v=0`);
-    // //TODO: use random id
-    // lines.push(`o=- 10000 2 IN IP4 127.0.0.1`);
-    // lines.push(`s=-`);
-    // lines.push(`t=0 0`);
-    // lines.push(`a=ice-lite`);
-
-    // const groupLength = lines.push(`a=group:BUNDLE `);
-    // lines.push(`a=msid-semantic: WMS *`);
-    // lines.push(`a=fingerprint:${this.remoteDTLSParameters.fingerprint.algorithm} ${this.remoteDTLSParameters.fingerprint.value}`);
-
-    // let mids = [];
-    // for (let sender of this.senders) {
-    //   //is stopped remove sdp
-    //   if (!sender.isStopped || sender.mid === '0') {
-    //     if (sender.available || sender.mid === '0') {
-    //       mids.push(sender.mid);
-    //     }
-    //     lines.push(sender.toSdp(this.remoteICEParameters, this.remoteICECandidates));
-    //   }
-    // }
-
-    // //add BUNDLE
-    // lines[groupLength - 1] = lines[groupLength - 1] + mids.join(' ');
-
-    // let sdp = lines.join('\r\n');
-    // sdp = sdp + '\r\n';
     let sdpObj = new Sdp();
     sdpObj.fingerprint = {
       algorithm: this.remoteDTLSParameters.fingerprint.algorithm,
