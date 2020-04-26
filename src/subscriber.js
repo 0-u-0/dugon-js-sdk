@@ -59,6 +59,7 @@ export default class Subscriber extends Transport {
 
     await this.pc.setRemoteDescription(remoteSdp);
 
+    //TODO: transceiver
     let answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
@@ -111,9 +112,6 @@ export default class Subscriber extends Transport {
     }
 
     for (let [key, receiver] of this.receivers) {
-      //is stopped remove sdp
-      // lines.push(receiver.media.toSdp());
-      // mids.push(receiver.mid);
       sdpObj.medias.push(receiver.media)
     }
 
