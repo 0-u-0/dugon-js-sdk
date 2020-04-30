@@ -12,6 +12,8 @@ export default class Receiver {
     this.mid = mid;
 
     this.media = media;
+
+    this.transceiver = null;
   }
 
   get kind() {

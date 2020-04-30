@@ -161,6 +161,7 @@ export default class Media {
     newMedia.icePwd = iceParameters.password;
     newMedia.candidates = iceCandidates;
     newMedia.role = 'recv';
+    newMedia.setup = 'passive';
     return newMedia;
   }
 
@@ -173,6 +174,7 @@ export default class Media {
     media.protocol = 'UDP/TLS/RTP/SAVPF';
     media.connection = 'IN IP4 127.0.0.1';
     //enable after subscribe
+    media.setup = 'actpass';
     media.direction = 'inactive';
     media.iceUfrag = iceParameters.usernameFragment;
     media.icePwd = iceParameters.password;
@@ -201,7 +203,7 @@ export default class Media {
     return this.direction != "inactive"
   }
   //TODO: dtx
-  constructor(type, direction, codec, payload, rate, mid, cname,
+  constructor(type, direction, codecName, payload, rate, mid, cname,
     channels = 1, parameters, ssrc,
     rtcpFb, extension, rtx, protocol) {
     // send,recv
@@ -210,6 +212,7 @@ export default class Media {
     //TODO:  port 
     this.port = 0;
     this.mid = mid;
+    this.setup = null;
 
     this.protocol = protocol;
     //TODO:  connection
@@ -220,7 +223,7 @@ export default class Media {
     this.icePwd = '';
     this.iceOptions = '';
 
-    this.codecName = codec;
+    this.codecName = codecName;
     this.rate = rate;
     this.channels = channels;
 
@@ -253,6 +256,7 @@ export default class Media {
     codec.extensions = this.extension;
     codec.reducedSize = true;
     codec.mid = this.mid
+    codec.ssrc = this.ssrc;
 
     codec.rtx = this.rtx;
     //TODO: dtx
@@ -306,12 +310,7 @@ export default class Media {
       }
     }
 
-    //TODO: SSl role
-    if (this.role == 'send') {
-      lines.push(`a=setup:actpass`);
-    } else if (this.role == 'recv') {
-      lines.push(`a=setup:passive`);
-    }
+    lines.push(`a=setup:${this.setup}`);
 
     lines.push(`a=mid:${this.mid}`);
 
@@ -335,8 +334,6 @@ export default class Media {
     }
 
 
-    //TODO:
-    lines.push(`a=ice-options:renomination`);
 
     if (this.role === 'send') {
       if (this.rtx) {
@@ -349,6 +346,8 @@ export default class Media {
       }
     }
 
+    //TODO:
+    lines.push(`a=ice-options:renomination`);
     lines.push(`a=rtcp-mux`);
     lines.push(`a=rtcp-rsize`);
 

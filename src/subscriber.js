@@ -59,7 +59,6 @@ export default class Subscriber extends Transport {
 
     await this.pc.setRemoteDescription(remoteSdp);
 
-    //TODO: transceiver
     let answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
